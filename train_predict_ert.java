@@ -23,27 +23,16 @@ void train_test(){
     int nClass=2;
     //35 when writing all HTCC mirrors out, 28 when summing the ADCs instead
     //31 with p, theta, phi
-    int nVars=35; 
+    int nVars=31; 
 
     //String trainDir="/Users/tyson/data_repo/trigger_data/sims/claspyth_train/for_pid/";
     String trainDir="/Users/tyson/data_repo/trigger_data/rgd/018326/for_caos_pid/";
 
-    int[] var_inds=DataList.range(0,nVars);
-    /*int var_inds[]=new int[25];
-    int added=0;
-    for(int i=0;i<31;i++){
-        if(i<21 || i>26){
-            System.out.printf("i %d added %d \n",i,added);
-            var_inds[added]=i;
-            added++;
-        }
-    }*/
-
-    DataList dlt = DataList.fromCSV(trainDir+"train_fromcfpred_allNegBG.csv",
-            var_inds, DataList.range(nVars,nVars+nClass));
-    DataList dle = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG.csv",
-            var_inds, DataList.range(nVars,nVars+nClass));
-    DataList dlv = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG.csv",
+    DataList dlt = DataList.fromCSV(trainDir+"train_fromcfpred_allNegBG2.csv",
+            DataList.range(0,nVars), DataList.range(nVars,nVars+nClass));
+    DataList dle = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG2.csv",
+            DataList.range(0,nVars), DataList.range(nVars,nVars+1));
+    DataList dlv = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG2.csv",
             DataList.range(nVars+nClass,nVars+nClass+3), DataList.range(nVars,nVars+nClass));
     dlt.shuffle();
     
@@ -60,17 +49,18 @@ void train_test(){
     dlt.scan();
     dlv.scan();
 
-    DeepNettsClassifier classifier = new DeepNettsClassifier();
-    //classifier.init(new int[] { nVars, 50,100,50,25,5, nClass });
-    classifier.init(new int[] { nVars,20,10,5, nClass });
-    classifier.train(dlt, 1000);
+    ClassifierExtraTrees classifier = new ClassifierExtraTrees(nVars,nClass);
 
-    classifier.save("pid_elNegBG_fromcfpred.network");
+    //------ these are default values, can be commented
+    classifier.setK(nVars); // set number of features in bootstrapping
+    classifier.setNMin(15); // minimumu number of rows in the sample
+    classifier.setNumTrees(100); // set number of trees
 
-    EJMLModel model = new EJMLModel("pid_elNegBG_fromcfpred.network", ModelType.SOFTMAX);
+    classifier.train(dlt);
+    classifier.export("pid_elNegBG2_fromcfpred_ert.network");
 
-    System.out.println("network structure: " + model.summary());
-    System.out.println("\n\nRunning Inference:\n------------");
+    ClassifierExtraTrees model = new ClassifierExtraTrees();
+    model.load("pid_elNegBG2_fromcfpred_ert.network");
 
 
     PlotResponse(dle,model,0,"e-",nClass);
@@ -92,10 +82,8 @@ void train_test(){
 
 }
 
-public static void PlotResponse(DataList dle,  EJMLModel model, int elClass,String part, int nClass) {
+public static void PlotResponse(DataList dle,  ClassifierExtraTrees model, int elClass,String part, int nClass) {
     int NEvents = dle.getList().size();
-
-    float[] output = new float[nClass];
 
     H1F hRespPos = new H1F(part+" in Sector", 100, 0, 1);
     hRespPos.attr().setLineColor(2);
@@ -108,14 +96,14 @@ public static void PlotResponse(DataList dle,  EJMLModel model, int elClass,Stri
     hRespNeg.attr().setTitleX("Response");
     //Sort predictions into those made on the positive/or negative samples
     for(int i=0;i<NEvents;i+=1) {
-        float[] input = dle.getList().get(i).floatFirst();
+        double[] input = dle.getList().get(i).getFirst();
         float[] desired = dle.getList().get(i).floatSecond();
-        model.getOutput(input, output);
+        double output=model.evaluate(input);
 
         if(desired[elClass]==1) {
-            hRespPos.fill(output[elClass]);
+            hRespPos.fill(output);
         } else {
-            hRespNeg.fill(output[elClass]);
+            hRespNeg.fill(output);
         }
     }
 
@@ -129,26 +117,25 @@ public static void PlotResponse(DataList dle,  EJMLModel model, int elClass,Stri
 
 
 //Labels col 0 is 1 if there's an e-, 0 otherwise
-public static double[] getMetrics(DataList dle,  EJMLModel model,double thresh,int elClass, int nClass){
+public static double[] getMetrics(DataList dle,  ClassifierExtraTrees model,double thresh,int elClass, int nClass){
     double[] metrics= new double[5];
     int nEvents = dle.getList().size();
 
     int nEls=0;
     double TP=0,FP=0,FN=0;
-    float[] output = new float[nClass];
     for (int i = 0; i < nEvents; i++) {
-        float[] input = dle.getList().get(i).floatFirst();
+        double[] input = dle.getList().get(i).getFirst();
         float[] desired = dle.getList().get(i).floatSecond();
-        model.getOutput(input, output);
+        double output=model.evaluate(input);
         if (desired[elClass]==1) {
             nEls++;
-            if (output[elClass] > thresh) {
+            if (output > thresh) {
                 TP++;
             } else {
                 FN++;
             } 
         } else {
-            if (output[elClass] > thresh) {
+            if (output > thresh) {
                 FP++;
             } 
         } // Check true label
@@ -167,26 +154,25 @@ public static double[] getMetrics(DataList dle,  EJMLModel model,double thresh,i
 }
 
 //Labels col 0 is 1 if there's an e-, 0 otherwise
-public static double[] getMetsForBin(DataList dle,DataList dlv,  EJMLModel model,double thresh,int elClass, int nClass,int cutVar,double low,double high){
+public static double[] getMetsForBin(DataList dle,DataList dlv,  ClassifierExtraTrees model,double thresh,int elClass, int nClass,int cutVar,double low,double high){
     double[] metrics = new double [2];
     int nEvents = dle.getList().size();
 
     double TP=0,FN=0,FP=0;
-    float[] output = new float[nClass];
     for (int i = 0; i < nEvents; i++) {
-        float[] input = dle.getList().get(i).floatFirst();
+        double[] input = dle.getList().get(i).getFirst();
         float[] vars = dlv.getList().get(i).floatFirst();
         float[] desired = dle.getList().get(i).floatSecond();
-        model.getOutput(input, output);
+        double output=model.evaluate(input);
         if (vars[cutVar] > low && vars[cutVar]<high) {
             if (desired[elClass]==1) {
-                if (output[elClass] > thresh) {
+                if (output > thresh) {
                     TP++;
                 } else {
                     FN++;
                 } 
             } else {
-                if (output[elClass] > thresh) {
+                if (output > thresh) {
                     FP++;
                 } 
             } // Check true label
@@ -200,7 +186,7 @@ public static double[] getMetsForBin(DataList dle,DataList dlv,  EJMLModel model
     return metrics;
 }
 
-public static void plotVarDep(DataList dle,DataList dlv,  EJMLModel model,double thresh,int elClass, int nClass,
+public static void plotVarDep(DataList dle,DataList dlv,  ClassifierExtraTrees model,double thresh,int elClass, int nClass,
             Boolean addPur, int cutVar, String varName, String varUnits,double low, double high,double step) {
 
         String yTitle="Metrics";
@@ -239,7 +225,7 @@ public static void plotVarDep(DataList dle,DataList dlv,  EJMLModel model,double
 
 }
 
-public double findBestThreshold(DataList dle,  EJMLModel model,int elClass, int nClass,double effLow){
+public double findBestThreshold(DataList dle,  ClassifierExtraTrees model,int elClass, int nClass,double effLow){
     
     GraphErrors gEff = new GraphErrors();
     gEff.attr().setMarkerColor(2);

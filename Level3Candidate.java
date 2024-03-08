@@ -1,32 +1,29 @@
 import j4np.hipo5.data.Bank;
+import j4np.hipo5.data.CompositeNode;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.lang.Math;
 
-public class Level3Particle {
+import j4np.neural.classifier.NeuralClassifierModel;
+
+public class Level3Candidate {
 
     float pid_resp=0;
     float track_resp=0;
 
-    int PID=1;
-    int MC_PID=0;
+    int PID=-1;
 
-    int MC_PIndex=-1;
     int PIndex=-1;
     int Cal_Sector=0;
-    int HTCC_Sector=0;
     int Sector=0;
     int Charge=0;
+    int Pred_Charge=0;
 
     Boolean show=false;
+    Boolean unmatched=true;
 
-    float Track_chi2=0;
-    int Track_index=-1;
-    int Track_NDF=0;
-    int Track_nSL=0;
-    int Track_Status=-1;
-    int[] track_clusterIDs = new int[6];
     float[] track_clusters = new float[6];
     double[] ecin_all_hits = new double[108];
     //double[] CF_out = new double[108];
@@ -38,26 +35,22 @@ public class Level3Particle {
     double Vx=0;
     double Vy=0;
     double Vz=0;
-
-    double chi2pid=0;
-
     double Px=0;
     double Py=0;
     double Pz=0;
+
+    double chi2pid=0;
 
     double P=0;
     double Theta=0;
     double Phi=0;
 
-    double MC_Px=0;
-    double MC_Py=0;
-    double MC_Pz=0;
-
-    double MC_P=0;
-    double MC_Theta=0;
-    double MC_Phi=0;
-
-    int MC_Sector=0;
+    double Pred_Px=0;
+    double Pred_Py=0;
+    double Pred_Pz=0;
+    float Pred_P=0;
+    float Pred_Theta=0;
+    float Pred_Phi=0;
 
     double Nphe=0;
     float[] HTCC_adcs = new float[]{0,0,0,0,0,0,0,0};
@@ -127,31 +120,7 @@ public class Level3Particle {
     float ECOUTDV_fcf=0;
     float ECOUTDW_fcf=0;
 
-    double PCAL_scale=6.5;
-    double ECAL_scale=8.0;
-
-    double PCal_UMax_cut = 80.;
-    double PCal_UMin_cut = 3.; // For outbendings this doesn't matter much;
-    double PCal_VMax_cut = 73.;
-    double PCal_VMin_cut = 3.;
-    double PCal_WMax_cut = 73.;
-    double PCal_WMin_cut = 3.;
-
-    double ECin_UMax_cut = 35.;
-    double ECin_UMin_cut = 2.5; // For outbendings this doesn't matter much;
-    double ECin_VMax_cut = 34.;
-    double ECin_VMin_cut = 3.;
-    double ECin_WMax_cut = 34.;
-    double ECin_WMin_cut = 3.;
-
-    double ECout_UMax_cut = 34.;
-    double ECout_UMin_cut = 2; // For outbendings this doesn't matter much;
-    double ECout_VMax_cut = 34;
-    double ECout_VMin_cut = 3.;
-    double ECout_WMax_cut = 34.;
-    double ECout_WMin_cut = 3.;
-
-    public Level3Particle(){
+    public Level3Candidate(){
 
     }
 
@@ -170,10 +139,11 @@ public class Level3Particle {
     public void print(){
         System.out.println("");
         System.out.printf("PID %d pindex %d sector %d cal_sector %d charge %d\n",PID,PIndex,Sector,Cal_Sector,Charge);
+        System.out.printf("pred Px %f Py %f Pz %f \n",Pred_Px,Pred_Py,Pred_Pz);
         System.out.println("Clusters ");
         for(int k = 0; k < 6; k++) System.out.printf(" %f ", track_clusters[k]);
         System.out.println("");
-        System.out.printf("PCAL E %f ECIN E %f ECOUT E %f\n",PCAL_energy,ECIN_energy,ECOUT_energy);
+        System.out.printf("PCAL E %f ECIN # %f ECOUT E %f\n",PCAL_energy,ECIN_energy,ECOUT_energy);
         System.out.println("ECAL positions ");
         for(int k = 0; k < 9; k++) System.out.printf(" %f ", CF_out[k]);
         System.out.println("");
@@ -184,6 +154,47 @@ public class Level3Particle {
 
     }
     
+
+    public void printbanks(CompositeNode tr,CompositeNode pt, Bank RECb, Bank CALb, Bank HTCCb){
+        for(int i=0;i<tr.getRows();i++){
+            System.out.printf("\n New Track index %d \n",i);
+            System.out.printf("sector = %2d, charge = %3d segments [ ", tr.getInt(1,i),tr.getInt(2,i));
+            for(int k = 0; k < 6; k++) System.out.printf(" %9.5f ",tr.getDouble(10+k,i));
+            System.out.printf("] p %9.5f  %9.5f %9.5f\n",pt.getDouble(4,i),pt.getDouble(5,i),pt.getDouble(6,i)); 
+        }
+
+        System.out.println("\nREC::Particle");
+        RECb.show();
+        System.out.println("\nREC::Calorimeter");
+        CALb.show();
+        System.out.println("\nHTCC ADC");
+        HTCCb.show();
+        
+
+    }
+
+    //using composite nodes 3210,2 and 3210,3
+    public void find_AI_tracks(CompositeNode tr,CompositeNode pt, int i){
+        if(show){
+            System.out.printf("\n New Track index %d \n",i);
+            System.out.printf("sector = %2d, charge = %3d segments [ ", tr.getInt(1,i),tr.getInt(2,i));
+            for(int k = 0; k < 6; k++) System.out.printf(" %9.5f ",tr.getDouble(10+k,i));
+            System.out.printf("] p %9.5f  %9.5f %9.5f\n",pt.getDouble(4,i),pt.getDouble(5,i),pt.getDouble(6,i));
+        }
+
+        Sector=tr.getInt(1,i);
+        Pred_Charge=tr.getInt(2,i);
+        for(int k = 0; k < 6; k++){
+            track_clusters[k]=(float) tr.getDouble(10+k,i)/112;
+        }
+        Pred_Px=pt.getDouble(4,i);
+        Pred_Py=pt.getDouble(5,i);
+        Pred_Pz=pt.getDouble(6,i);
+        Pred_P = (float) Math.sqrt(Pred_Px * Pred_Px + Pred_Py * Pred_Py + Pred_Pz * Pred_Pz);
+        Pred_Theta = (float) Math.acos((float)Pred_Pz / Pred_P);// Math.atan2(Math.sqrt(Pred_Px*Pred_Px+Pred_Py*Pred_Py),Pred_Pz);
+        Pred_Phi = (float) Math.atan2(Pred_Py, Pred_Px);
+
+    }
 
     //using ECAL::adc
     public void read_cal_bank_from_cf_pred(float[] cf_pred, int[] cf_strips, Bank ECAL_Bank){
@@ -209,47 +220,47 @@ public class Level3Particle {
                 //----------------
                 if(sect==Sector){
                     if(layer==1){
-                        if(strip>(cf_strips[0]-6) && strip<(cf_strips[0]+6)){
+                        if(strip>(cf_strips[0]-4) && strip<(cf_strips[0]+4)){
                             PCALDU_fcf++;
                             PCAL_energy_fcf+=ADC;
                         }
                     } else if(layer==2){
-                        if(strip>(cf_strips[1]-6) && strip<(cf_strips[1]+6)){
+                        if(strip>(cf_strips[1]-4) && strip<(cf_strips[1]+4)){
                             PCALDV_fcf++;
                             PCAL_energy_fcf+=ADC;
                         }
                     } else if(layer==3){
-                        if(strip>(cf_strips[2]-6) && strip<(cf_strips[2]+6)){
+                        if(strip>(cf_strips[2]-4) && strip<(cf_strips[2]+4)){
                             PCALDW_fcf++;
                             PCAL_energy_fcf+=ADC;
                         }
                     } else if(layer==4){
-                        if(strip>(cf_strips[3]-6) && strip<(cf_strips[3]+6)){
+                        if(strip>(cf_strips[3]-4) && strip<(cf_strips[3]+4)){
                             ECINDU_fcf++;
                             ECIN_energy_fcf+=ADC;
                         }
                     } else if(layer==5){
-                        if(strip>(cf_strips[4]-6) && strip<(cf_strips[4]+6)){
+                        if(strip>(cf_strips[4]-4) && strip<(cf_strips[4]+4)){
                             ECINDV_fcf++;
                             ECIN_energy_fcf+=ADC;
                         }
                     } else if(layer==6){
-                        if(strip>(cf_strips[5]-6) && strip<(cf_strips[5]+6)){
+                        if(strip>(cf_strips[5]-4) && strip<(cf_strips[5]+4)){
                             ECINDW_fcf++;
                             ECIN_energy_fcf+=ADC;
                         }
                     } else if(layer==7){
-                        if(strip>(cf_strips[6]-6) && strip<(cf_strips[6]+6)){
+                        if(strip>(cf_strips[6]-4) && strip<(cf_strips[6]+4)){
                             ECOUTDU_fcf++;
                             ECOUT_energy_fcf+=ADC;
                         }
                     } else if(layer==8){
-                        if(strip>(cf_strips[7]-6) && strip<(cf_strips[7]+6)){
+                        if(strip>(cf_strips[7]-4) && strip<(cf_strips[7]+4)){
                             ECOUTDV_fcf++;
                             ECOUT_energy_fcf+=ADC;
                         }
                     } else if(layer==9){
-                        if(strip>(cf_strips[8]-6) && strip<(cf_strips[8]+6)){
+                        if(strip>(cf_strips[8]-4) && strip<(cf_strips[8]+4)){
                             ECOUTDW_fcf++;
                             ECOUT_energy_fcf+=ADC;
                         }
@@ -259,36 +270,6 @@ public class Level3Particle {
         }
         
 
-    }
-
-    //using REC::Track
-    public void find_sector_track(Bank TrackBank){
-        if(show){
-            System.out.println("REC::Track");
-            TrackBank.show();
-        }
-
-        //TrackBank.show();
-        
-        for (int k = 0; k < TrackBank.getRows(); k++) {
-            int pindex = TrackBank.getInt("pindex", k);
-            int ind = TrackBank.getInt("index", k);
-            //int ndf = TrackBank.getInt(0, k);
-            int status = TrackBank.getInt("status", k);
-            float chi2 = TrackBank.getFloat("chi2", k);
-            int sectorTrk = TrackBank.getInt("sector", k);
-            if(pindex==PIndex){
-                Sector=sectorTrk;
-                Track_index=ind;
-                //Track_NDF=ndf;
-                Track_nSL=6;
-                Track_chi2=chi2;
-                Track_Status=TrackBank.getInt("status", k);
-                if( (TrackBank.getInt("status", k) & 0b101010101010)!=0){
-                    Track_nSL=5;
-                }
-            }
-        }
     }
 
     //using HTCC:adc
@@ -310,186 +291,20 @@ public class Level3Particle {
         }
     }
 
-    //using TimeBasedTrkg::TBTracks or HitBasedTrkg::HBTracks
-    public void find_track_clusterIDs(Bank TrackBank){
-        if(show){
-            System.out.println("HB/TB::HB/TBTrack");
-            System.out.printf("Track index %d \n",Track_index);
-            TrackBank.show();
-        }
-        //need to already find track sector from REC::Track
-        boolean found=false;
-        int sect = TrackBank.getInt("sector", Track_index);
-        if(sect==Sector){
-            found=true;
-            for(int i=0;i<6;i++){
-                track_clusterIDs[i]=TrackBank.getInt("Cluster"+String.valueOf(i+1)+"_ID", Track_index);
-                
-            }
-        }
-
-        //sometimes for some reason there seems to be a mismatch between index in REC::track bank and in HB/TB::Tracks
-        //in that case, use status to match
-
-        for (int i=0;i<TrackBank.getRows();i++){
-            int status = TrackBank.getInt("status", i);
-            int sect2 = TrackBank.getInt("sector", i);
-            if (status == Track_Status) {
-                found = true;
-                Sector=sect2;
-                for (int k = 0; k < 6; k++) {
-                    track_clusterIDs[k] = TrackBank.getInt("Cluster" + String.valueOf(k + 1) + "_ID", i);
-                }
-            }
-
-        }
-    }
-
-    //using TimeBasedTrkg::TBClusters or HitBasedTrkg::HBClusters
-    public void find_track_clusters(Bank TrackBank){
-        if(show){
-            System.out.println("HB/TB::HB/TBTrack");
-            System.out.println("Recorded Cluster IDs"+Arrays.toString(track_clusterIDs));
-            TrackBank.show();
-        }
-
-        //need to already find track sector from REC::Track
-        for (int k = 0; k < TrackBank.getRows(); k++) {
-            int id = TrackBank.getInt("id", k);
-            for(int i=0;i<6;i++){
-                if(track_clusterIDs[i]==id){
-                    track_clusters[i]=TrackBank.getFloat("avgWire", k)/112;
-                }
-            }
-        }
-    }
-
-    public void find_sector_cal(Bank CalBank){
-        for (int k = 0; k < CalBank.getRows(); k++) {
-            int pindex = CalBank.getInt("pindex", k);
-            int sectorTrk = CalBank.getInt("sector", k);
-            if(pindex==PIndex){Cal_Sector=sectorTrk;}
-        }
-    }
-
-    public void read_HTCC_bank(Bank HTCCBank){
-        for (int k = 0; k < HTCCBank.getRows(); k++) {
-            int pindex = HTCCBank.getInt("pindex", k);
-            double nphe = HTCCBank.getFloat("nphe", k);
-            int sector = HTCCBank.getInt("sector", k);
-            if(pindex==PIndex){
-                Nphe=nphe;
-                HTCC_Sector=sector;
-            }
-        }
-    }
-
-    public Boolean isMip(Bank ECAL_Bank){
-        Boolean ismip=true;
-        for (int k = 0; k < ECAL_Bank.getRows(); k++) {
-            float widthU = ECAL_Bank.getFloat("widthU",k);
-            float widthV = ECAL_Bank.getFloat("widthV",k);
-            float widthW = ECAL_Bank.getFloat("widthW",k);
-            if(Cal_index.contains(k)){ 
-            //if(Cal_index==k){
-                if(widthU>1 && widthV>1 && widthW>1){
-                    ismip=false;
-                }
-            }
-
-        }
-        return ismip;
-    }
-
-    //using ECAL clusters
-    public Boolean check_FID_Cal_Clusters(Bank ECAL_Bank){
-        Boolean Fid=true;
-        //ECAL_Bank.show();
-        //System.out.printf("index %d sector %d\n",PIndex,Sector);
-        for (int k = 0; k < ECAL_Bank.getRows(); k++) {
-            int sector=ECAL_Bank.getInt("sector", k);
-            int layer=ECAL_Bank.getInt("layer",k);
-            double u=(double) ECAL_Bank.getInt("coordU",k);
-            double v=(double) ECAL_Bank.getInt("coordV",k);
-            double w=(double) ECAL_Bank.getInt("coordW",k);
-            double energy=ECAL_Bank.getFloat("energy",k);
-            
-            if(layer==1 && Cal_index.contains(k)){// Cal_index==k){
-                u=u/PCAL_scale;
-                v=v/PCAL_scale;
-                w=w/PCAL_scale;
-                /*System.out.printf("layer %d, sector %d, u %f,v %f,w %f,energy %f\n",layer,sector,u,v,w,energy);
-                System.out.printf("Sector %d, energy PCAL %f, ECIN %f , ECOUT %f\n",Sector,PCAL_energy,ECIN_energy,ECOUT_energy);*/
-                if(u>PCal_UMax_cut||u<PCal_UMin_cut){Fid=false;}
-                if(v>PCal_VMax_cut||v<PCal_VMin_cut){Fid=false;}
-                if(w>PCal_WMax_cut||w<PCal_WMin_cut){Fid=false;}
-            } else if(layer==4 && Cal_index.contains(k)){// Cal_index==k){
-                u=u/ECAL_scale;
-                v=v/ECAL_scale;
-                w=w/ECAL_scale;
-                /*System.out.printf("layer %d, sector %d, u %f,v %f,w %f,energy %f\n",layer,sector,u,v,w,energy);
-                System.out.printf("Sector %d, energy PCAL %f, ECIN %f , ECOUT %f\n",Sector,PCAL_energy,ECIN_energy,ECOUT_energy);*/
-                if(u>ECin_UMax_cut||u<ECin_UMin_cut){Fid=false;}
-                if(v>ECin_VMax_cut||v<ECin_VMin_cut){Fid=false;}
-                if(w>ECin_WMax_cut||w<ECin_WMin_cut){Fid=false;}
-            } else if(layer==7 &&Cal_index.contains(k)){// Cal_index==k){
-                u=u/ECAL_scale;
-                v=v/ECAL_scale;
-                w=w/ECAL_scale;
-                /*System.out.printf("layer %d, sector %d, u %f,v %f,w %f,energy %f\n",layer,sector,u,v,w,energy);
-                System.out.printf("Sector %d, energy PCAL %f, ECIN %f , ECOUT %f\n",Sector,PCAL_energy,ECIN_energy,ECOUT_energy);*/
-                if(u>ECout_UMax_cut||u<ECout_UMin_cut){Fid=false;}
-                if(v>ECout_VMax_cut||v<ECout_VMin_cut){Fid=false;}
-                if(w>ECout_WMax_cut||w<ECout_WMin_cut){Fid=false;}
-            }
-            
-        }
-        return Fid;
-    }
-
-    
-
-    public Boolean check_Energy_Dep_Cut(){
-        Boolean pass=false;
-        //System.out.printf("energy P %f i %f o %f t %f\n",PCAL_energy,ECIN_energy,ECOUT_energy,tot_e);
-        if(SF>0.2&&PCAL_energy>0.06){
-            pass=true;
-        }
-        return pass;
-    }
-
-    public Boolean check_SF_cut(){
-        Boolean pass=false;
-        if(SF>0.2){pass=true;}
-        return pass;
-    }
-
-    //using ECAL::adc
-    public void fillECin(Bank ECAL_Bank){
+    public void applyTriangCut(){
+        double SFPCAL=PCAL_energy/P;
+        double SFECIN=ECIN_energy/P;
+        double SFECOUT=ECOUT_energy/P;
         
-        for(int k = 0; k < ECAL_Bank.getRows(); k++){
-            
-            int   sect = ECAL_Bank.getInt("sector", k);
-            int  layer = ECAL_Bank.getInt("layer", k);
-            int  strip = ECAL_Bank.getInt("component", k);
-            int    ADC = ECAL_Bank.getInt("ADC", k);
-
-            if(ADC>0.0){
-                double energy = (ADC/10000.0)/1.5/3.0;
-                //----------------
-                if(sect==Sector){
-                    if (layer > 3 && layer < 7) {
-                        int index = ((layer-4)*36+strip)-1;
-
-                        if (index < 108) {
-                            ecin_all_hits[index]=energy;
-                        }
-                    }
-                }
+        if(PID==11 && P>4.5){
+            if(SFECIN > (0.2 - SFPCAL)){
+                //all good
+            } else{
+                PID=-211;
             }
         }
     }
-
+ 
     //REC::Calorimeter
     public void read_Cal_Bank(Bank ECAL_Bank){
         if(show){
@@ -509,7 +324,8 @@ public class Level3Particle {
             double m2u=ECAL_Bank.getFloat("m2u",k);
             double m2v=ECAL_Bank.getFloat("m2v",k);
             double m2w=ECAL_Bank.getFloat("m2w",k);
-            if (pindex == PIndex) {
+            if (pindex == PIndex && sector==Sector) {
+                Cal_Sector=sector;
                 Cal_index.add(index);
                 //Cal_index=index;
                 if(layer==1){
@@ -554,116 +370,74 @@ public class Level3Particle {
 
     }
 
-    public Boolean TruthMatch(double Plim,double Thetalim, double Philim){
-        Boolean truthmatched=false;
-        double resP=Math.abs(P-MC_P);
-        double resTheta=Math.abs(Theta-MC_Theta);
-        double resPhi=Math.abs(Phi-MC_Phi);
-        if(resP<Plim && resTheta<Thetalim && resPhi<Philim){
-            truthmatched=true;
-        }
-        return truthmatched;
+    public int nCalHits(){
+      int nCalHits=0;
+      if(PCAL_energy_fcf>0.01){
+        nCalHits++;
+      }
+      if(ECIN_energy_fcf>0.01){
+        nCalHits++;
+      }
+      if(ECOUT_energy_fcf>0.01){
+        nCalHits++;
+      }
 
+      return nCalHits;
     }
 
-    public void find_ClosestMCParticle(Bank MCPartBank){
-        double min_resPx=9999;
-        double min_resPy=9999;
-        double min_resPz=9999;
-        int best_ind=-1;
-        for (int i = 0; i < MCPartBank.getRows(); i++) {
-            read_MCParticle_Bank(i, MCPartBank);
-            double resPx=Math.abs(Px-MC_Px);
-            double resPy=Math.abs(Py-MC_Py);
-            double resPz=Math.abs(Pz-MC_Pz);
-            if(resPx<min_resPx && resPy<min_resPy && resPz<min_resPz){
-                min_resPx=resPx;
-                min_resPy=resPy;
-                min_resPz=resPz;
-                best_ind=i;
-            }
-        }
-        read_MCParticle_Bank(best_ind, MCPartBank);
-        MC_PIndex=best_ind;
-    }
+    public void find_RECParticle_fromtrack(Bank RECP,Bank RECT,Bank TTracks, Bank TClust,float[] predtrack,double maxdist){
 
-    public void read_MCParticle_Bank(int pindex, Bank PartBank) {
-        MC_PID = PartBank.getInt("pid", pindex);
-        MC_Px = PartBank.getFloat("px", pindex);
-        MC_Py = PartBank.getFloat("py", pindex);
-        MC_Pz = PartBank.getFloat("pz", pindex);
-        MC_P = Math.sqrt(MC_Px * MC_Px + MC_Py * MC_Py + MC_Pz * MC_Pz);
-        MC_Theta = Math.acos(MC_Pz / MC_P);// Math.atan2(Math.sqrt(px*px+py*py),pz);
-        MC_Phi = Math.atan2(MC_Py, MC_Px);
-        double theta_deg=MC_Theta* (180.0 / Math.PI);
-        double phi_deg=MC_Phi* (180.0 / Math.PI);
-        if(theta_deg>5 && theta_deg<35){
-            if(MC_PID==22 || MC_PID==2112){
-                if (phi_deg > -30 && phi_deg < 30) {
-                    MC_Sector = 1;
-                } else if (phi_deg > 30 && phi_deg < 90) {
-                    MC_Sector = 2;
-                } else if (phi_deg > 90 && phi_deg < 150) {
-                    MC_Sector = 3;
-                } else if (phi_deg > 150 && phi_deg < -150) {
-                    MC_Sector = 4;
-                } else if (phi_deg > -150 && phi_deg < -90) {
-                    MC_Sector = 5;
-                } else if (phi_deg > -90 && phi_deg < -30) {
-                    MC_Sector = 6;
-                }
-            } else{
-                //shoudl this be different for charged particles?
-                // they'll drift in phi
-                //this also depends if negative or positive charge
-                //and depends on field...
-                //done below for e- in inbending
-                if (phi_deg > -15 && phi_deg < 40) {
-                    MC_Sector = 1;
-                } else if (phi_deg > 45 && phi_deg < 90) {
-                    MC_Sector = 2;
-                } else if (phi_deg > 105 && phi_deg < 145) {
-                    MC_Sector = 3;
-                } else if (phi_deg > 165 && phi_deg < -150) {
-                    MC_Sector = 4;
-                } else if (phi_deg > -135 && phi_deg < -90) {
-                    MC_Sector = 5;
-                } else if (phi_deg > -75 && phi_deg < -30) {
-                    MC_Sector = 6;
-                }
+    
+        //System.out.println("\n New pred track");
+        //System.out.println(Arrays.toString(predtrack));
+        
 
-                //trying to account for regions of no acceptance...
-                /*if (phi_deg > -20 && phi_deg < 40) {
-                    MC_Sector = 1;
-                } else if (phi_deg > 40 && phi_deg < 100) {
-                    MC_Sector = 2;
-                } else if (phi_deg > 100 && phi_deg < 160) {
-                    MC_Sector = 3;
-                } else if (phi_deg > 160 && phi_deg < -140) {
-                    MC_Sector = 4;
-                } else if (phi_deg > -140 && phi_deg < -80) {
-                    MC_Sector = 5;
-                } else if (phi_deg > -80 && phi_deg < -20) {
-                    MC_Sector = 6;
-                } */
+        for (int i = 0; i < RECP.getRows(); i++) {
+            Level3Particle part = new Level3Particle();
+            part.read_Particle_Bank(i, RECP);
+            if(part.PIndex!=-1){
+                part.find_sector_track(RECT);
+                part.find_track_clusterIDs(TTracks);
+                part.find_track_clusters(TClust);
+
                 
+                //System.out.println("true track");
+                //System.out.println(Arrays.toString(part.track_clusters));
+
+                float dist=0;
+                for (int k=0;k<6;k++){
+                    dist+=(part.track_clusters[k]-predtrack[k])*(part.track_clusters[k]-predtrack[k]);
+                }
+
+                dist=(float) Math.sqrt(dist);
+                //System.out.printf("dist %f max %f\n",dist,maxdist);
+                if(dist<maxdist){
+                    //System.out.println("Matched!");
+                    read_Particle_Bank(i, RECP);
+                    PIndex=i;
+                    unmatched=false;
+                    track_clusters=part.track_clusters;
+                    Sector=part.Sector;
+                    break;
+                }
+
+
             }
         }
-        MC_PIndex=pindex;
         
     }
 
-    public void find_ClosestRECParticle(Bank PartBank){
+    public void find_ClosestRECParticle_fromPredP(Bank PartBank,double lx, double ly, double lz){
         double min_resPx=9999;
         double min_resPy=9999;
         double min_resPz=9999;
         int best_ind=-1;
         for (int i = 0; i < PartBank.getRows(); i++) {
             read_Particle_Bank(i, PartBank);
-            double resPx=Math.abs(Px-MC_Px);
-            double resPy=Math.abs(Py-MC_Py);
-            double resPz=Math.abs(Pz-MC_Pz);
-            if(resPx<min_resPx && resPy<min_resPy && resPz<min_resPz){
+            double resPx=Math.abs(Px-Pred_Px);
+            double resPy=Math.abs(Py-Pred_Py);
+            double resPz=Math.abs(Pz-Pred_Pz);
+            if(resPx<min_resPx && resPy<min_resPy && resPz<min_resPz && Pred_Charge==Charge){
                 min_resPx=resPx;
                 min_resPy=resPy;
                 min_resPz=resPz;
@@ -671,21 +445,15 @@ public class Level3Particle {
             }
         }
         read_Particle_Bank(best_ind, PartBank);
-        PIndex=best_ind;
-    }
-
-    public void applyTriangCut(){
-        double SFPCAL=PCAL_energy/P;
-        double SFECIN=ECIN_energy/P;
-        double SFECOUT=ECOUT_energy/P;
-        
-        if(PID==11 && P>4.5){
-            if(SFECIN > (0.2 - SFPCAL)){
-                //all good
-            } else{
-                PID=-211;
-            }
+        if(min_resPx<lx && min_resPy<ly && min_resPz<lz && Vz<12 && Vz>-13 && Math.abs(chi2pid)<5){
+            PIndex=best_ind;
+            unmatched=false;
+        } else{
+            PIndex=-1;
+            PID=-1;
+            unmatched=true;
         }
+        
     }
 
     public void read_Particle_Bank(int pindex, Bank PartBank) {
@@ -705,9 +473,9 @@ public class Level3Particle {
         double vy = PartBank.getFloat("vy", pindex);
         double vz = PartBank.getFloat("vz", pindex);
         if (Math.abs(status) >= 2000 && Math.abs(status) < 4000) {
-            chi2pid=c2p;
             PID = pid;
             Charge = charge;
+            chi2pid=c2p;
             Px = px;
             Py = py;
             Pz = pz;
@@ -727,19 +495,12 @@ public class Level3Particle {
         //System.out.printf("MC PID %d ",MC_PID);
 
         int out_ind=-1;
-        if(MC_PID==11){
+        
+        if(PID==11){
             out_ind=0;
-        } else if(MC_PID==-211){
+        } else {
             out_ind=1;
-        }/*else if(MC_PID==211){
-            out_ind=2;
-        }else if(MC_PID==-11){
-            out_ind=3;
-        }else if(MC_PID==-13){
-            out_ind=4;
-        }else if(MC_PID==13){
-            out_ind=5;
-        }*/
+        }
 
         //System.out.printf("out_ind %d ",out_ind);
 
@@ -749,14 +510,6 @@ public class Level3Particle {
         }
 
         return out_ind;
-    }
-
-    public float[] getNormedCFOut(){
-        float[] normCFOut=new float[9];
-        for (int i=0;i<9;i++) {
-            normCFOut[i]=CF_out[i]/500; //500 using LU/LV/LW
-        }
-        return normCFOut;
     }
 
     //35 floating-point values and 6 integer values...
@@ -799,9 +552,9 @@ public class Level3Particle {
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALLU_fcf/500.0, PCALLV_fcf/500.0, PCALLW_fcf/500.0)); // /2000
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINLU_fcf/500.0, ECINLV_fcf/500.0, ECINLW_fcf/500.0));
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTLU_fcf/500.0, ECOUTLV_fcf/500.0, ECOUTLW_fcf/500.0));
-        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALDU_fcf/16.0, PCALDV_fcf/16.0, PCALDW_fcf/16.0)); //loop over at most 11 strips
-        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINDU_fcf/16.0, ECINDV_fcf/16.0, ECINDW_fcf/16.0)); //5 each side of pred
-        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTDU_fcf/16.0, ECOUTDV_fcf/16.0, ECOUTDW_fcf/16.0));
+        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALDU_fcf/7.0, PCALDV_fcf/7.0, PCALDW_fcf/7.0)); //loop over at most 7 strips
+        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINDU_fcf/7.0, ECINDV_fcf/7.0, ECINDW_fcf/7.0)); //3 each side of pred
+        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTDU_fcf/7.0, ECOUTDV_fcf/7.0, ECOUTDW_fcf/7.0));
         
         for (float value : track_clusters) {
             csvLineBuilder.append(String.format("%.6f,", value));
@@ -810,6 +563,17 @@ public class Level3Particle {
         for (double value : HTCC_adcs) {
             csvLineBuilder.append(String.format("%.6f,",value/35000));
         }
+
+        //use just one number for HTCC rather than mostly 0 array
+        /*float HTCC_val=0;
+        for (double value : HTCC_adcs) {
+            HTCC_val+=value;
+        }
+        HTCC_val=HTCC_val/50000;
+        csvLineBuilder.append(String.format("%.6f,",HTCC_val));
+
+        //add Momentum theta phi for pred
+        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", Pred_P/10, Pred_Theta, (Pred_Phi+3.5)/7.0));*/
         
         for (int value : pid_label) {
             csvLineBuilder.append(String.format("%d,", value));
@@ -858,6 +622,23 @@ public class Level3Particle {
             vars_for_pid[n]=value/35000;
             n++;
         }
+
+        //use just one number for HTCC rather than mostly 0 array
+        /*for (float value : HTCC_adcs) {
+            vars_for_pid[n]+=value;
+        }
+        vars_for_pid[n]=vars_for_pid[n]/50000;
+        n++;
+
+        //add Momentum theta phi for pred
+        vars_for_pid[n]=Pred_P/10;
+        n++;
+
+        vars_for_pid[n]=Pred_Theta;
+        n++;
+
+        vars_for_pid[n]=(Pred_Phi+(float)3.5)/((float)7.);
+        n++;*/
         
         return vars_for_pid;
     }

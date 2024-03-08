@@ -25,23 +25,26 @@ void train_test_cf(){
 
     int nClass=9;
 
-    DataList dlt = DataList.fromCSV("/Users/tyson/data_repo/trigger_data/sims/claspyth_train/for_pid/train_cf.csv",
+    //String trainDir="/Users/tyson/data_repo/trigger_data/sims/claspyth_train/for_pid/";
+    String trainDir="/Users/tyson/data_repo/trigger_data/rgd/018326/for_caos_pid/";
+
+    DataList dlt = DataList.fromCSV(trainDir+"train_cf.csv",
             DataList.range(0,6), DataList.range(6,6+nClass));
-    DataList dle = DataList.fromCSV("/Users/tyson/data_repo/trigger_data/sims/claspyth_train/for_pid/test_cf.csv",
+    DataList dle = DataList.fromCSV(trainDir+"test_cf.csv",
             DataList.range(0,6), DataList.range(6,6+nClass));
-    DataList dlv = DataList.fromCSV("/Users/tyson/data_repo/trigger_data/sims/claspyth_train/for_pid/test_cf.csv",
+    DataList dlv = DataList.fromCSV(trainDir+"test_cf.csv",
     DataList.range(6+nClass,6+nClass+3), DataList.range(6,6+nClass));
     dlt.shuffle();
     
     dlt.scan();
 
-    /*DeepNettsNetwork regression = new DeepNettsNetwork();
+    DeepNettsNetwork regression = new DeepNettsNetwork();
     regression.activation(ActivationType.TANH); // or ActivationType.TANH
     regression.outputActivation(ActivationType.LINEAR);
     regression.init(new int[]{6,12,36,27,18,9});
     regression.train(dlt,1000);
 
-    regression.save("cf_el.network");*/
+    regression.save("cf_el.network");
 
     EJMLModel model = new EJMLModel("cf_el.network", ModelType.TANH_LINEAR);
 

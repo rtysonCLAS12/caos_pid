@@ -238,6 +238,7 @@ public class Level3Converter_SimulationSIDIS {
                     List<Level3Particle> particles = getRECPart(banks,nEl);
                     for (Level3Particle p : particles) {
                         if (p.TruthMatch(0.1, 0.1, 0.1) && p.ECAL_energy!=0) {
+                            //
                             if (p.MC_PID == 11 && nEl < nPart && p.HTCC_Sector==p.Sector && p.Cal_Sector==p.Sector) {
                                 if(isPID){
                                     if(p.PCALLU_fcf!=-2){
@@ -253,7 +254,7 @@ public class Level3Converter_SimulationSIDIS {
                                     }
                                     
                                 }
-                                
+                                //
                             } else if (p.MC_PID == -211 && nPim < nPart && p.Cal_Sector==p.Sector) {
                                 if(isPID){
                                     if(p.PCALLU_fcf!=-2){
@@ -346,8 +347,8 @@ public class Level3Converter_SimulationSIDIS {
         conv.load_cf("cf_el.network");
         conv.load_LtoStripConv("LtoStrip_convTable.csv");
         
-        conv.convertData(dir,dir+"for_pid/train_fromcfpred.csv",true,90,1,98000);//50000
-        conv.convertData(dir,dir+"for_pid/test_fromcfpred.csv",true,98,90,8000);//50000
+        conv.convertData(dir,dir+"for_pid/train_fromcfpred2.csv",true,90,1,98000);//50000
+        conv.convertData(dir,dir+"for_pid/test_fromcfpred2.csv",true,98,90,8000);//50000
         //conv.convertData(dir,dir+"for_pid/train_cf.csv",false,90,1,1000000);//50000
         //conv.convertData(dir,dir+"for_pid/test_cf.csv",false,98,90,50000);//50000
         //conv.convertData(dir,dir+"for_pid/bla_cf.csv",false,91,90,100);//50000

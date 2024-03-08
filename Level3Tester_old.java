@@ -42,14 +42,14 @@ import j4np.neural.classifier.NeuralClassifierModel;
  *
  * @author tyson
  */
-public class Level3Tester_SimulationSIDIS {
+public class Level3Tester_old {
     NeuralClassifierModel trackfinder = new NeuralClassifierModel();
     EJMLModel cf;
     EJMLModel pider;
     DataList LtoSconv;
     float timeElapsed=0;
 
-    public Level3Tester_SimulationSIDIS() {
+    public Level3Tester_old() {
 
     }
 
@@ -68,6 +68,15 @@ public class Level3Tester_SimulationSIDIS {
     public void load_LtoStripConv(String path){
         LtoSconv = DataList.fromCSV("LtoStrip_convTable.csv",
                 DataList.range(0,69), DataList.range(0,1));
+    }
+
+    public Boolean arrayNotEmpty(float [] arr){
+        for (double value : arr) {
+            if(value!=0){
+                return true;
+            }
+        }
+        return false;
     }
 
     public Boolean arrayContains(float [] arr,int c){
@@ -141,7 +150,7 @@ public class Level3Tester_SimulationSIDIS {
             Level3Particle part = new Level3Particle();
             part.read_Particle_Bank(i, dsts[5]);
             if(part.PIndex!=-1){ //ie part in FD
-                part.find_ClosestMCParticle(dsts[10]);
+                //part.find_ClosestMCParticle(dsts[10]);
                 //for debugging
                 /*if (part.MC_PID == 11 && part.TruthMatch(0.1, 0.1, 0.1)&&nEl==0) {
                     part.setShow(true);
@@ -205,7 +214,7 @@ public class Level3Tester_SimulationSIDIS {
         return el_i;
     }
 
-    public DataList getPred(String dir,int nFiles,int start, int nPred){
+    public DataList getPred(String file, int nPred){
 
         
 
@@ -215,54 +224,54 @@ public class Level3Tester_SimulationSIDIS {
         int nRead=0;
         float nEv=0;
 
-        while (start < nFiles && notAllFull) {// 56
+        HipoReader r = new HipoReader(file);
 
-            String file = dir + "clasdis_" + String.valueOf(start) + ".hipo";
-            // String file=dir;
-            start++;
+        Event e = new Event();
 
-            HipoReader r = new HipoReader(file);
+        // r.getSchemaFactory().show();
+        Bank[] banks = r.getBanks("DC::tdc", "ECAL::adc", "RUN::config", "FTOF::adc", "HTCC::adc",
+                "REC::Particle", "REC::Track", "REC::Calorimeter", "REC::Cherenkov",
+                "ECAL::clusters", "MC::Particle", "HitBasedTrkg::HBTracks", "HitBasedTrkg::HBClusters",
+                "TimeBasedTrkg::TBTracks", "TimeBasedTrkg::TBClusters", "ECAL::hits");
 
-            Event e = new Event();
+        Instant start_time = Instant.now();
+        while (r.hasNext() && notAllFull) {
+            nEv++;
 
-            // r.getSchemaFactory().show();
-            Bank[] banks = r.getBanks("DC::tdc", "ECAL::adc", "RUN::config", "FTOF::adc", "HTCC::adc",
-                    "REC::Particle", "REC::Track", "REC::Calorimeter", "REC::Cherenkov",
-                    "ECAL::clusters", "MC::Particle", "HitBasedTrkg::HBTracks", "HitBasedTrkg::HBClusters",
-                    "TimeBasedTrkg::TBTracks", "TimeBasedTrkg::TBClusters", "ECAL::hits");
+            r.nextEvent(e);
+            e.read(banks);
 
-            Instant start_time = Instant.now();
-            while (r.hasNext() && notAllFull) {
-                nEv++;
-
-                r.nextEvent(e);
-                e.read(banks);
-
-                List<Level3Particle> particles = getRECPart(banks);
-                for (Level3Particle p : particles) {
-                    if (p.TruthMatch(0.1, 0.1, 0.1) && p.track_resp > 0.9) {
-                        double phi=p.Phi*(180.0 / Math.PI);
-                        double theta=p.Theta*(180.0 / Math.PI);
-                        int mcpid=p.MC_PID;
-                        if(mcpid==11){
-                            /*if (p.HTCC_Sector != p.Sector) {
-                                mcpid = 0;
-                            }*/
+            List<Level3Particle> particles = getRECPart(banks);
+            for (Level3Particle p : particles) {
+                if (p.track_resp > 0.9) {
+                    double phi = p.Phi * (180.0 / Math.PI);
+                    double theta = p.Theta * (180.0 / Math.PI);
+                    int mcpid = p.PID;
+                    if (mcpid == 11) {
+                        
+                        /*if (p.HTCC_Sector != p.Sector) {
+                            mcpid = 0;
+                        }*/
+                        if(!arrayNotEmpty(p.HTCC_adcs)){
+                            mcpid=0;
                         }
-                        DataEntry de = new DataEntry(new double[]{mcpid,p.P,theta,phi,p.track_resp}, new double[]{p.pid_resp});
-                        pred.add(de);
-                        nRead++;
+                        
                     }
+                    DataEntry de = new DataEntry(new double[] { mcpid, p.P, theta, phi, p.track_resp },
+                            new double[] { p.pid_resp });
+                    pred.add(de);
+                    nRead++;
                 }
+            }
 
-                if (nRead>=nPred) { 
-                    notAllFull = false;
-                }
-            } 
-            Instant finish_time = Instant.now();
-            //System.out.println("t s"+start_time.toString()+" f "+finish_time.toString());
-            timeElapsed += Duration.between(start_time, finish_time).toMillis();
+            if (nRead >= nPred) {
+                notAllFull = false;
+            }
         }
+        Instant finish_time = Instant.now();
+        // System.out.println("t s"+start_time.toString()+" f "+finish_time.toString());
+        timeElapsed += Duration.between(start_time, finish_time).toMillis();
+        
         System.out.printf("Found %d particles\n",nRead);
 
         float rate=(nEv/timeElapsed);
@@ -490,18 +499,18 @@ public class Level3Tester_SimulationSIDIS {
 
         //to run
         // /open Level3Particle.java
-        // /open Level3Tester_SimulationSIDIS.java
-        // Level3Tester_SimulationSIDIS.main(new String[]{});
+        // /open Level3Tester_old.java
+        // Level3Tester_old.main(new String[]{});
 
-        String dir = "/Users/tyson/data_repo/trigger_data/sims/claspyth/";
+        String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/recook_caos_pid/run_018326_4_wAIBanks.h5";
 
-        Level3Tester_SimulationSIDIS tester = new Level3Tester_SimulationSIDIS();
+        Level3Tester_old tester = new Level3Tester_old();
         tester.load_trackfinder("clas12rgd.network");
         tester.load_cf("cf_el.network");
         tester.load_LtoStripConv("LtoStrip_convTable.csv");
         tester.load_pider("pid_elPim_fromcfpred.network");//_fromcfpred
         
-        DataList preds = tester.getPred(dir,5,0,100000);
+        DataList preds = tester.getPred(file,10000);
 
         tester.PlotVar(preds, 4, 11, "e-", "Track Response","",0,1,100);
 
