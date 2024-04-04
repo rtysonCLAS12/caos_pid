@@ -27,7 +27,7 @@ public class Level3Candidate {
     float[] track_clusters = new float[6];
     double[] ecin_all_hits = new double[108];
     //double[] CF_out = new double[108];
-    float[] CF_out = new float[]{0,0,0,0,0,0,0,0,0};
+    float[] CF_out = new float[]{0,0,0,0,0,0,0,0,0,0,0};
 
     //e-,pi+,pi-,e+,mu-,mu+
     int[] pid_label = new int[2]; //3
@@ -88,6 +88,9 @@ public class Level3Candidate {
     double ECINM2U=0;
     double ECINM2V=0;
     double ECINM2W=0;
+
+    double FTOF_comp=0;
+    double FTOF_path=0;
 
     //below are values found in ECAL::adc bank
     //using cluster finder
@@ -304,6 +307,31 @@ public class Level3Candidate {
             }
         }
     }
+
+    //REC::Scintillator
+    public void read_Scint_Bank(Bank Scint_Bank){
+      if(show){
+          System.out.println("REC::Scintillator");
+          Scint_Bank.show();
+      }
+      //Scint_Bank.show();
+      for (int k = 0; k < Scint_Bank.getRows(); k++) {
+          int pindex = Scint_Bank.getInt("pindex", k);
+          double energy = Scint_Bank.getFloat("energy", k);
+          int sector = Scint_Bank.getInt("sector", k);
+          int layer=Scint_Bank.getInt("layer",k);
+          int component=Scint_Bank.getInt("component",k);
+          double path = Scint_Bank.getFloat("path", k);
+          if (pindex == PIndex && sector==Sector) {
+              if(layer==2){
+                FTOF_comp=component;
+                FTOF_path=path;
+                CF_out[9]=component;
+                CF_out[10]=(float)path;
+              } 
+          }
+      }
+    }
  
     //REC::Calorimeter
     public void read_Cal_Bank(Bank ECAL_Bank){
@@ -437,7 +465,7 @@ public class Level3Candidate {
             double resPx=Math.abs(Px-Pred_Px);
             double resPy=Math.abs(Py-Pred_Py);
             double resPz=Math.abs(Pz-Pred_Pz);
-            if(resPx<min_resPx && resPy<min_resPy && resPz<min_resPz && Pred_Charge==Charge){
+            if(resPx<min_resPx && resPy<min_resPy && resPz<min_resPz && Pred_Charge==Charge){//
                 min_resPx=resPx;
                 min_resPy=resPy;
                 min_resPz=resPz;
@@ -445,7 +473,8 @@ public class Level3Candidate {
             }
         }
         read_Particle_Bank(best_ind, PartBank);
-        if(min_resPx<lx && min_resPy<ly && min_resPz<lz && Vz<12 && Vz>-13 && Math.abs(chi2pid)<5){
+        if(min_resPx<lx && min_resPy<ly && min_resPz<lz && Vz<12 && Vz>-13 && Math.abs(chi2pid)<5){ //inbending
+        //if(min_resPx<lx && min_resPy<ly && min_resPz<lz && Vz<10 && Vz>-18 && Math.abs(chi2pid)<20){ //outbending
             PIndex=best_ind;
             unmatched=false;
         } else{
@@ -588,6 +617,37 @@ public class Level3Candidate {
     }
 
     //35 floating-point values and 6 integer values...
+    public String get_csv_out_fromCFPred_noTrack(){
+      StringBuilder csvLineBuilder = new StringBuilder();
+
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCAL_energy_fcf/150000.0, ECIN_energy_fcf/150000.0, ECOUT_energy_fcf/150000.0));// /3
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALLU_fcf/500.0, PCALLV_fcf/500.0, PCALLW_fcf/500.0)); // /2000
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINLU_fcf/500.0, ECINLV_fcf/500.0, ECINLW_fcf/500.0));
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTLU_fcf/500.0, ECOUTLV_fcf/500.0, ECOUTLW_fcf/500.0));
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALDU_fcf/7.0, PCALDV_fcf/7.0, PCALDW_fcf/7.0)); //loop over at most 7 strips
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINDU_fcf/7.0, ECINDV_fcf/7.0, ECINDW_fcf/7.0)); //3 each side of pred
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTDU_fcf/7.0, ECOUTDV_fcf/7.0, ECOUTDW_fcf/7.0));
+      
+      for (double value : HTCC_adcs) {
+        csvLineBuilder.append(String.format("%.6f,",value/35000));
+    }
+
+      //add Momentum theta phi for pred
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", Pred_P/10, Pred_Theta, (Pred_Phi+3.5)/7.0));
+      
+      for (int value : pid_label) {
+          csvLineBuilder.append(String.format("%d,", value));
+      }
+
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", P, Theta*(180.0 / Math.PI), Phi*(180.0 / Math.PI)));
+
+      // Remove the trailing comma
+      csvLineBuilder.deleteCharAt(csvLineBuilder.length() - 1);
+      // Convert StringBuilder to String
+      return csvLineBuilder.toString();
+  }
+
+    //35 floating-point values and 6 integer values...
     public float[] get_vars_forpid(){
         float[] vars_for_pid = new float[35];
         vars_for_pid[0]=PCAL_energy_fcf/150000;
@@ -622,26 +682,54 @@ public class Level3Candidate {
             vars_for_pid[n]=value/35000;
             n++;
         }
-
-        //use just one number for HTCC rather than mostly 0 array
-        /*for (float value : HTCC_adcs) {
-            vars_for_pid[n]+=value;
-        }
-        vars_for_pid[n]=vars_for_pid[n]/50000;
-        n++;
-
-        //add Momentum theta phi for pred
-        vars_for_pid[n]=Pred_P/10;
-        n++;
-
-        vars_for_pid[n]=Pred_Theta;
-        n++;
-
-        vars_for_pid[n]=(Pred_Phi+(float)3.5)/((float)7.);
-        n++;*/
         
         return vars_for_pid;
     }
+
+    //35 floating-point values and 6 integer values...
+    public float[] get_vars_forpid_noTrack(){
+      float[] vars_for_pid = new float[32];
+      vars_for_pid[0]=PCAL_energy_fcf/150000;
+      vars_for_pid[1]=ECIN_energy_fcf/150000;
+      vars_for_pid[2]=ECOUT_energy_fcf/150000;
+      vars_for_pid[3]=PCALLU_fcf/500;
+      vars_for_pid[4]=PCALLV_fcf/500;
+      vars_for_pid[5]=PCALLW_fcf/500;
+      vars_for_pid[6]=ECINLU_fcf/500;
+      vars_for_pid[7]=ECINLV_fcf/500;
+      vars_for_pid[8]=ECINLW_fcf/500;
+      vars_for_pid[9]=ECOUTLU_fcf/500;
+      vars_for_pid[10]=ECOUTLV_fcf/500;
+      vars_for_pid[11]=ECOUTLW_fcf/500;
+      vars_for_pid[12]=PCALDU_fcf/16;
+      vars_for_pid[13]=PCALDV_fcf/16;
+      vars_for_pid[14]=PCALDW_fcf/16;
+      vars_for_pid[15]=ECINDU_fcf/16;
+      vars_for_pid[16]=ECINDV_fcf/16;
+      vars_for_pid[17]=ECINDW_fcf/16;
+      vars_for_pid[18]=ECOUTDU_fcf/16;
+      vars_for_pid[19]=ECOUTDV_fcf/16;
+      vars_for_pid[20]=ECOUTDW_fcf/16;
+      
+      int n=21;
+      
+      for (float value : HTCC_adcs) {
+          vars_for_pid[n]=value/35000;
+          n++;
+      }
+
+      //add Momentum theta phi for pred
+      vars_for_pid[n]=Pred_P/10;
+      n++;
+
+      vars_for_pid[n]=Pred_Theta;
+      n++;
+
+      vars_for_pid[n]=(Pred_Phi+(float)3.5)/((float)7.);
+      n++;
+      
+      return vars_for_pid;
+  }
 
     public String get_csv_cf_out(){
         StringBuilder csvLineBuilder = new StringBuilder();
@@ -650,10 +738,13 @@ public class Level3Candidate {
             csvLineBuilder.append(String.format("%.6f,", value));
         }
 
-        // Append values from CF_out array to the StringBuilder
-        for (double value : CF_out) {
-            csvLineBuilder.append(String.format("%.6f,", value/500)); //500 using LU/LV/LW
+        // 9 first values of CF_out are the calorimeter Ls
+        for (int i=0;i<9;i++) {
+            csvLineBuilder.append(String.format("%.6f,", CF_out[i]/500)); //500 using LU/LV/LW
         }
+        //next two values are FTOF comp and path
+        csvLineBuilder.append(String.format("%.6f,", FTOF_comp/62));
+        csvLineBuilder.append(String.format("%.6f,", FTOF_path/1000));
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", P, Theta*(180.0 / Math.PI), Phi*(180.0 / Math.PI)));
         // Remove the trailing comma
         csvLineBuilder.deleteCharAt(csvLineBuilder.length() - 1);

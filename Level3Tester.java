@@ -260,7 +260,7 @@ public class Level3Tester {
       int[] cf_strips = convLtoStrip(cf_pred);
       part.read_cal_bank_from_cf_pred(cf_pred, cf_strips, banks[1]);
       float[] pid_pred = new float[2];
-      pider.getOutput(part.get_vars_forpid(), pid_pred);
+      pider.getOutput(part.get_vars_forpid_noTrack(), pid_pred);
       part.setPidResp(pid_pred[0]);
       // part.print();
       // part.printbanks(tr,pt,banks[5],banks[6],banks[4]);
@@ -301,7 +301,7 @@ public class Level3Tester {
       int[] cf_strips = convLtoStrip(cf_pred);
       part.read_cal_bank_from_cf_pred(cf_pred, cf_strips, banks[1]);
       float[] pid_pred = new float[2];
-      pider.getOutput(part.get_vars_forpid(), pid_pred);
+      pider.getOutput(part.get_vars_forpid(), pid_pred); //_noTrack
       part.setPidResp(pid_pred[0]);
       // part.print();
       // part.printbanks(tr,pt,banks[5],banks[6],banks[4]);
@@ -563,7 +563,7 @@ public class Level3Tester {
         float maxPred = 0;
         for (Level3Candidate p : Candidates) {
           if ( p.Sector == sect) {
-            if(p.unmatched == false && p.Charge == -1){
+            if( p.Charge == -1 && p.unmatched == false){ //p.unmatched == false
               if (p.pid_resp > maxPred) {
                 maxPred = p.pid_resp;
                 bestp = p.Pred_P;
@@ -911,6 +911,8 @@ public class Level3Tester {
     double bestRespTh = 0;
     double bestPuratEffLow = 0;
     double bestPurErratEffLow = 0;
+    double bestEffatEffLow = 0;
+    double bestEffErratEffLow = 0;
 
     // Loop over threshold on the response
     for (double RespTh = 0.01; RespTh < 0.99; RespTh += 0.01) {
@@ -925,14 +927,16 @@ public class Level3Tester {
         if (Pur > bestPuratEffLow) {
           bestPuratEffLow = Pur;
           bestPurErratEffLow = PurErr;
+          bestEffatEffLow = Eff;
+          bestEffErratEffLow = EffErr;
           bestRespTh = RespTh;
         }
       }
     } // Increment threshold on response
 
     System.out.format(
-        "%n Best Purity at Efficiency above %.3f: %.3f +/- %.4f at a threshold on the response of %.3f %n%n",
-        effLow, bestPuratEffLow, bestPurErratEffLow, bestRespTh);
+        "%n Purity %.3f +/- %.4f at Efficiency %.3f +/- %.4f at a threshold on the response of %.3f %n%n",
+        bestPuratEffLow, bestPurErratEffLow,bestEffatEffLow,bestEffErratEffLow, bestRespTh);
 
     TGCanvas c = new TGCanvas();
     c.setTitle("Metrics vs Response");
@@ -952,6 +956,8 @@ public class Level3Tester {
     // Level3Tester.main(new String[]{});
 
     String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/recook_caos_pid/run_018326_4_wAIBanks.h5";
+    //String file = "/Users/tyson/data_repo/trigger_data/rgd/018777/run_018777_wAI.h5";
+    //String file = "/Users/tyson/data_repo/trigger_data/rgd/018442/run_018442_1_wAI.h5";
 
     Level3Tester tester = new Level3Tester();
     tester.load_trackfinder("clas12rgd.network");
@@ -961,17 +967,21 @@ public class Level3Tester {
 
     DataList preds = tester.getPred(file, 1000000);
 
-    tester.PlotVar(preds, 1, 11, "e-", "P", "[GeV]", 0, 10, 100, -1, 0);
-    tester.PlotVar(preds, 2, 11, "e-", "Theta", "[Deg]", 0, 50, 100, -1, 0);
-    tester.PlotVar(preds, 3, 11, "e-", "Phi", "[Deg]", -180, 180, 100, -1, 0);
+    
 
     tester.PlotResponse(preds, 0, 11, "e-");
-    double bestth = tester.findBestThreshold(preds, 0, 11, 0.995);
-    // set L1ind to -1 to avoid plotting L1 trigger
-    tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 1, "P", "[GeV]", 1, 9.0, 1.0);
-    tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 2, "Theta", "[Deg]", 5.0, 35.0, 5.);
-    tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 3, "Phi", "[Deg]", -180, 180, 10.);
-    tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 4, "Sector", "", 0.5, 6.5, 1.0);
+    double bestth = tester.findBestThreshold(preds, 0, 11, 0.95); //0.995
+
+    tester.PlotVar(preds, 1, 11, "e-", "P", "[GeV]", 0, 10, 100, -1 , 0);
+    //tester.PlotVar(preds, 2, 11, "e-", "Theta", "[Deg]", 0, 50, 100, -1, 0);
+    //tester.PlotVar(preds, 3, 11, "e-", "Phi", "[Deg]", -180, 180, 100, -1, 0);
+
+
+    // set L1ind to -1 to avoid plotting L1 trigger, 5 for DC roads, 6 for non DC roads (at least on run 018326)
+    tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 1, "P", "[GeV]", 1, 9.0, 1.0);
+    //tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 2, "Theta", "[Deg]", 5.0, 35.0, 5.);
+    //tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 3, "Phi", "[Deg]", -180, 180, 10.);
+    tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 4, "Sector", "", 0.5, 6.5, 1.0);
 
 
     tester.plotVarDep(preds, 1,7, 1, 0.5, false, -1, 8, "Highest Track P", "[GeV]", 1, 9.0, 1.0);
