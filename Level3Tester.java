@@ -970,7 +970,7 @@ public class Level3Tester {
     
 
     tester.PlotResponse(preds, 0, 11, "e-");
-    double bestth = tester.findBestThreshold(preds, 0, 11, 0.95); //0.995
+    double bestth = tester.findBestThreshold(preds, 0, 11, 0.99); //0.995
 
     tester.PlotVar(preds, 1, 11, "e-", "P", "[GeV]", 0, 10, 100, -1 , 0);
     //tester.PlotVar(preds, 2, 11, "e-", "Theta", "[Deg]", 0, 50, 100, -1, 0);
