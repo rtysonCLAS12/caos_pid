@@ -35,14 +35,12 @@ import j4ml.data.*;
 import j4ml.deepnetts.*;
 import j4ml.ejml.EJMLModel;
 import j4ml.ejml.EJMLModel.ModelType;
-import j4np.neural.classifier.NeuralClassifierModel;
 
 /**
  *
  * @author tyson
  */
 public class Level3Tester {
-  NeuralClassifierModel trackfinder = new NeuralClassifierModel();
   EJMLModel cf;
   DataList LtoSconv;
   EJMLModel pider;
@@ -53,10 +51,6 @@ public class Level3Tester {
 
   public Level3Tester() {
 
-  }
-
-  public void load_trackfinder(String path) {
-    trackfinder.loadFromFile(path, 12);
   }
 
   public void load_cf(String path) {
@@ -81,7 +75,7 @@ public class Level3Tester {
     return false;
   }
 
-  public void find_tracks_fromClusters(Bank ClusterBank, List<float[]> negTracks, List<float[]> posTracks) {
+  /*public void find_tracks_fromClusters(Bank ClusterBank, List<float[]> negTracks, List<float[]> posTracks) {
 
     all_permutations.clear();
 
@@ -171,7 +165,7 @@ public class Level3Tester {
       // Recursively generate permutations for the next depth
       generatePermutations(vectors, depth + 1, current, permutations, maxDifference);
     }
-  }
+  }*/
 
   int[] convLtoStrip(float[] Ls) {
     int[] strips = new int[] { -2, -2, -2, -2, -2, -2, -2, -2, -2 };
@@ -235,7 +229,7 @@ public class Level3Tester {
   // "REC::Particle", "REC::Calorimeter",
   // "REC::Cherenkov","REC::Track","HitBasedTrkg::HBClusters",
   // "HitBasedTrkg::HBTracks","ECAL::clusters");
-  public List<Level3Candidate> getCandidates_ownc(Bank[] banks) {
+  /*public List<Level3Candidate> getCandidates_ownc(Bank[] banks) {
 
     negTracks.clear();
     posTracks.clear();
@@ -271,7 +265,7 @@ public class Level3Tester {
     // timeElapsed += Duration.between(start_time, finish_time).toMillis();
 
     return ps;
-  }
+  }*/
 
   // 0 1 2 3 4
   // 5 6 7 8 9
@@ -281,7 +275,7 @@ public class Level3Tester {
   // "REC::Particle", "REC::Calorimeter",
   // "REC::Cherenkov","REC::Track","HitBasedTrkg::HBClusters",
   // "HitBasedTrkg::HBTracks","ECAL::clusters");
-  public List<Level3Candidate> getCandidates(Bank[] banks, CompositeNode tr, CompositeNode pt) {
+  public List<Level3Candidate> getCandidates(Bank[] banks, CompositeNode tr, CompositeNode pt, Boolean isOut) {
 
     // Instant start_time = Instant.now();
 
@@ -290,18 +284,18 @@ public class Level3Tester {
       // find and initialise Candidates
       Level3Candidate part = new Level3Candidate();
       // part.setShow(true);
-      part.find_AI_tracks(tr, pt, i);
+      part.find_AI_tracks(tr, pt,i,isOut);
       part.find_ClosestRECParticle_fromPredP(banks[5], 999, 999, 999);
       part.read_Cal_Bank(banks[6]);
       part.find_HTCC_ADCs(banks[4]);
       part.set_pid_label();
 
-      float[] cf_pred = new float[9];
+      float[] cf_pred = new float[11];
       cf.getOutput(part.track_clusters, cf_pred);
       int[] cf_strips = convLtoStrip(cf_pred);
       part.read_cal_bank_from_cf_pred(cf_pred, cf_strips, banks[1]);
       float[] pid_pred = new float[2];
-      pider.getOutput(part.get_vars_forpid(), pid_pred); //_noTrack
+      pider.getOutput(part.get_vars_forpid_wSF(), pid_pred); //_noTrack
       part.setPidResp(pid_pred[0]);
       // part.print();
       // part.printbanks(tr,pt,banks[5],banks[6],banks[4]);
@@ -350,6 +344,14 @@ public class Level3Tester {
     return trigger;
   }
 
+  public static float sumFloatArray(float[] arr){
+    float sum=0;
+    for (float a:arr){
+      sum+=a;
+    }
+    return sum;
+  } 
+
   // 0 1 2 3 4
   // 5 6 7 8 9
   // 10 11
@@ -377,6 +379,7 @@ public class Level3Tester {
       // part.print();
 
       if (part.Sector != 0 && PID == part.PID && part.Track_nSL == 6) {
+        //part.applyTriangCut();
         if (PID == 11) {
           if (arrayNotEmpty(part.HTCC_adcs) && part.Vz < 12 && part.Vz > -13) {
             c++;
@@ -416,7 +419,8 @@ public class Level3Tester {
 
       // part.print();
       // && part.Track_chi2<350 && part.Sector==part.Cal_Sector
-      if (part.Sector == sect && PID == part.PID && part.Track_nSL == 6) {
+      if (part.Sector == sect && PID == part.PID ) {//&& part.Track_nSL == 6 //&& part.Track_nSL == 6
+        part.applyTriangCut();
         if (PID == 11) {
           if (arrayNotEmpty(part.HTCC_adcs) && part.Vz < 12 && part.Vz > -13) {
             c++;
@@ -462,7 +466,7 @@ public class Level3Tester {
     return c;
   }
 
-  public DataList getPred(String file, int nPart) {
+  public DataList getPred(String file, int nPart,Boolean useAI, Boolean isOut) {
 
     int nFound = 0, rEv = 0, nRECEls = 0, nREC5SLEls = 0,nRec2Tracks=0, nAI2Tracks=0;
     DataList pred = new DataList();
@@ -477,6 +481,12 @@ public class Level3Tester {
     Bank[] banks = r.getBanks("DC::tdc", "ECAL::adc", "RUN::config", "FTOF::adc", "HTCC::adc",
         "REC::Particle", "REC::Calorimeter", "REC::Cherenkov", "REC::Track", "HitBasedTrkg::HBClusters",
         "HitBasedTrkg::HBTracks", "ECAL::clusters");
+    
+    if(useAI){
+      banks = r.getBanks("DC::tdc", "ECAL::adc", "RUN::config", "FTOF::adc", "HTCC::adc",
+        "RECAI::Particle", "RECAI::Calorimeter", "RECAI::Cherenkov", "RECAI::Track", "HitBasedTrkg::HBClusters",
+        "HitBasedTrkg::HBTracks", "ECAL::clusters");
+    }
 
     CompositeNode tr = new CompositeNode(3210, 2, "i", 1200);
     CompositeNode pt = new CompositeNode(3210, 3, "i", 1200);
@@ -507,7 +517,7 @@ public class Level3Tester {
       e.read(tr, 32100, 2);
       e.read(pt, 32100, 3);
 
-      List<Level3Candidate> Candidates = getCandidates(banks, tr, pt);
+      List<Level3Candidate> Candidates = getCandidates(banks, tr, pt,isOut);
 
       for (int sect = 1; sect < 7; sect++) {
 
@@ -562,9 +572,11 @@ public class Level3Tester {
 
         float maxPred = 0;
         for (Level3Candidate p : Candidates) {
+          
           if ( p.Sector == sect) {
-            if( p.Charge == -1 && p.unmatched == false){ //p.unmatched == false
-              if (p.pid_resp > maxPred) {
+
+            if( p.Pred_Charge == -1 ){ //p.unmatched == false
+              if (p.pid_resp > maxPred && arrayNotEmpty(p.HTCC_adcs) && sumFloatArray(p.HTCC_adcs)>70) { //cut on && p.Vz < 12 && p.Vz > -13 forces matching 
                 maxPred = p.pid_resp;
                 bestp = p.Pred_P;
                 bestsector = p.Sector;
@@ -575,7 +587,7 @@ public class Level3Tester {
             }
 
             if( p.nCalHits()>-1 ){ //&& p.unmatched == false
-              if(p.Charge==-1 && p.pid_resp<0.1){
+              if(p.Pred_Charge==-1 && p.pid_resp<0.1){
                 nAITracks++;
                 if (p.P > maxP) {
                   highp = p.Pred_P;
@@ -602,15 +614,19 @@ public class Level3Tester {
 
         long bits = banks[2].getLong("trigger", 0);
         int[] L1trigger = convertL1Trigger(bits);
+        int nPredEl=0;
+        if(maxPred>0){
+          nPredEl=100;
+        }
 
         // don't want to complicate metrics by change increase in efficiency of AI vs
         // REC
-        if (nMatchedEl >= nRecEl) {
-          if (hasEl == 0 && has5SLEl == 1) {
+        if (nPredEl >= nRecEl) { //nMatchedEl
+          /*if (hasEl == 0 && has5SLEl == 1) {
             // L1 trigger might fire for 5 SL electron
             // but we're only calculating metrics for 6SL electron
             // don't want to unfairly decrease L1 trigger purity
-          } else {
+          } else {*/
             int pidout = 0;
             if (hasEl == 1) {
               pidout = 11;
@@ -644,7 +660,7 @@ public class Level3Tester {
             pred.add(de);
             nFound++;
 
-          }
+          //}
 
         }
 
@@ -955,37 +971,48 @@ public class Level3Tester {
     // /open Level3Tester.java
     // Level3Tester.main(new String[]{});
 
-    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/recook_caos_pid/run_018326_4_wAIBanks.h5";
-    //String file = "/Users/tyson/data_repo/trigger_data/rgd/018777/run_018777_wAI.h5";
-    //String file = "/Users/tyson/data_repo/trigger_data/rgd/018442/run_018442_1_wAI.h5";
+    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/run_18326_3_wAIBanks.h5";
+    Boolean outbend=false;
+
+    //String file = "/Users/tyson/data_repo/trigger_data/rgd/018777/run_18777_3_wAIBanks.h5";
+    //Boolean outbend=true;
+
+    String field="";
+    if(outbend){field="_outbending";}
 
     Level3Tester tester = new Level3Tester();
-    tester.load_trackfinder("clas12rgd.network");
-    tester.load_cf("cf_el.network");
+    tester.load_cf("cf_el_wFTOF"+field+".network");
     tester.load_LtoStripConv("LtoStrip_convTable.csv");
-    tester.load_pider("pid_elNegBG_fromcfpred.network");// _fromcfpred
+    tester.load_pider("pid_elNegBG_fromcfpred"+field+"_wSF.network");// _fromcfpred old_networks/
 
-    DataList preds = tester.getPred(file, 1000000);
+    Boolean[] useAIBanks = new Boolean[2];
+    useAIBanks[0]=false;
+    useAIBanks[1]=true;
 
+
+    for (int i=1;i<2;i++){
+      DataList preds = tester.getPred(file, 1000000,useAIBanks[i],outbend);
+
+      tester.PlotResponse(preds, 0, 11, "e-");
+      double bestth = tester.findBestThreshold(preds, 0, 11, 0.99); //0.995
+
+      //tester.PlotVar(preds, 1, 11, "e-", "P", "[GeV]", 0, 10, 100, -1 , 0);
+      //tester.PlotVar(preds, 2, 11, "e-", "Theta", "[Deg]", 0, 50, 100, -1, 0);
+      //tester.PlotVar(preds, 3, 11, "e-", "Phi", "[Deg]", -180, 180, 100, -1, 0);
+
+      // set L1ind to -1 to avoid plotting L1 trigger, 5 for DC roads, 6 for non DC roads (at least on run 018326)
+      tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 1, "P", "[GeV]", 1, 9.0, 1.0);
+      //tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 2, "Theta", "[Deg]", 5.0, 35.0, 5.);
+      //tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 3, "Phi", "[Deg]", -180, 180, 10.);
+      //tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 4, "Sector", "", 0.5, 6.5, 1.0);
+
+      //MesonEx Trigger
+      /*
+      tester.plotVarDep(preds, 1,7, 1, 0.5, false, -1, 8, "Highest Track P", "[GeV]", 1, 9.0, 1.0);
+      tester.plotVarDep(preds, 1,7, 1, 0.5, false, -1, 4, "Sector", "", 0.5, 6.5, 1.0);
+      */
+
+    }
     
-
-    tester.PlotResponse(preds, 0, 11, "e-");
-    double bestth = tester.findBestThreshold(preds, 0, 11, 0.99); //0.995
-
-    tester.PlotVar(preds, 1, 11, "e-", "P", "[GeV]", 0, 10, 100, -1 , 0);
-    //tester.PlotVar(preds, 2, 11, "e-", "Theta", "[Deg]", 0, 50, 100, -1, 0);
-    //tester.PlotVar(preds, 3, 11, "e-", "Phi", "[Deg]", -180, 180, 100, -1, 0);
-
-
-    // set L1ind to -1 to avoid plotting L1 trigger, 5 for DC roads, 6 for non DC roads (at least on run 018326)
-    tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 1, "P", "[GeV]", 1, 9.0, 1.0);
-    //tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 2, "Theta", "[Deg]", 5.0, 35.0, 5.);
-    //tester.plotVarDep(preds, 0,0, 11, bestth, true, 5, 3, "Phi", "[Deg]", -180, 180, 10.);
-    tester.plotVarDep(preds, 0,0, 11, bestth, true, -1, 4, "Sector", "", 0.5, 6.5, 1.0);
-
-
-    tester.plotVarDep(preds, 1,7, 1, 0.5, false, -1, 8, "Highest Track P", "[GeV]", 1, 9.0, 1.0);
-    tester.plotVarDep(preds, 1,7, 1, 0.5, false, -1, 4, "Sector", "", 0.5, 6.5, 1.0);
-
   }
 }

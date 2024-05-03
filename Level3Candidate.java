@@ -6,8 +6,6 @@ import java.util.Arrays;
 import java.util.List;
 import java.lang.Math;
 
-import j4np.neural.classifier.NeuralClassifierModel;
-
 public class Level3Candidate {
 
     float pid_resp=0;
@@ -20,6 +18,7 @@ public class Level3Candidate {
     int Sector=0;
     int Charge=0;
     int Pred_Charge=0;
+    int HTCC_Sector=0;
 
     Boolean show=false;
     Boolean unmatched=true;
@@ -53,7 +52,9 @@ public class Level3Candidate {
     float Pred_Phi=0;
 
     double Nphe=0;
+    double Pred_Nphe=0;
     float[] HTCC_adcs = new float[]{0,0,0,0,0,0,0,0};
+    float[] HTCC_adcs_ms = new float[]{0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0}; //add sector before and after
 
     List<Integer> Cal_index=new ArrayList<Integer>();
     //double Cal_index=0;
@@ -177,7 +178,7 @@ public class Level3Candidate {
     }
 
     //using composite nodes 3210,2 and 3210,3
-    public void find_AI_tracks(CompositeNode tr,CompositeNode pt, int i){
+    public void find_AI_tracks(CompositeNode tr,CompositeNode pt, int i, Boolean isOut){
         if(show){
             System.out.printf("\n New Track index %d \n",i);
             System.out.printf("sector = %2d, charge = %3d segments [ ", tr.getInt(1,i),tr.getInt(2,i));
@@ -187,6 +188,9 @@ public class Level3Candidate {
 
         Sector=tr.getInt(1,i);
         Pred_Charge=tr.getInt(2,i);
+        if(isOut){
+          Pred_Charge=-1*Pred_Charge;
+        }
         for(int k = 0; k < 6; k++){
             track_clusters[k]=(float) tr.getDouble(10+k,i)/112;
         }
@@ -275,24 +279,62 @@ public class Level3Candidate {
 
     }
 
-    //using HTCC:adc
-    public void find_HTCC_ADCs(Bank HTCCBank){
-        for(int k = 0; k < HTCCBank.getRows(); k++){
-            int   sect = HTCCBank.getInt("sector", k);
-            int  layer = HTCCBank.getInt("layer", k); //1 or 2
-            int  component = HTCCBank.getInt("component", k); //1-4
-            int    ADC = HTCCBank.getInt("ADC", k);
+    // using HTCC:adc
+    public void find_HTCC_ADCs(Bank HTCCBank) {
+      for (int k = 0; k < HTCCBank.getRows(); k++) {
+        int sect = HTCCBank.getInt("sector", k);
+        int layer = HTCCBank.getInt("layer", k); // 1 or 2
+        int component = HTCCBank.getInt("component", k); // 1-4
+        int ADC = HTCCBank.getInt("ADC", k);
 
-            //double energy = (ADC / 5000.0); // &&energy<1.0
+        // double energy = (ADC / 5000.0); // &&energy<1.0
 
-            if (ADC >= 0.0 && sect == Sector) {
-                int index = ((layer - 1) * 4 + component) - 1;
-                if(index>=0 && index<8){
-                    HTCC_adcs[index]=ADC;
-                }   
+        int sector_m1=Sector-1;
+        int sector_p1=Sector+1;
+        if(Sector==1){sector_m1=6;}
+        if(Sector==6){sector_p1=1;}
+
+        if (ADC >= 0.0) {
+          if (sect == Sector) {
+            int index = ((layer - 1) * 4 + component) - 1;
+            if (index >= 0 && index < 8) {
+              HTCC_adcs[index] = ADC;
+              HTCC_adcs_ms[index + 8] = ADC;
             }
+          }
+          else if (sect == sector_m1) {
+            int index = ((layer - 1) * 4 + component) - 1;
+            if (index >= 0 && index < 8) {
+              HTCC_adcs_ms[index] = ADC;
+            }
+          }
+          else if (sect == sector_p1) {
+            int index = ((layer - 1) * 4 + component) - 1;
+            if (index >= 0 && index < 8) {
+              HTCC_adcs_ms[index+16] = ADC;
+            }
+          }
         }
+      }
     }
+
+    public void setPredNphe(double nphe){
+      if(nphe<0){nphe=0;}
+      Pred_Nphe=nphe;
+    }
+
+    //using REC::Cherenkov
+    public void read_HTCC_bank(Bank HTCCBank){
+      for (int k = 0; k < HTCCBank.getRows(); k++) {
+          int pindex = HTCCBank.getInt("pindex", k);
+          double nphe = HTCCBank.getFloat("nphe", k);
+          int sector = HTCCBank.getInt("sector", k);
+          if(pindex==PIndex){
+              Nphe=nphe;
+              HTCC_Sector=sector;
+          }
+      }
+  }
 
     public void applyTriangCut(){
         double SFPCAL=PCAL_energy/P;
@@ -464,8 +506,9 @@ public class Level3Candidate {
             read_Particle_Bank(i, PartBank);
             double resPx=Math.abs(Px-Pred_Px);
             double resPy=Math.abs(Py-Pred_Py);
-            double resPz=Math.abs(Pz-Pred_Pz);
-            if(resPx<min_resPx && resPy<min_resPy && resPz<min_resPz && Pred_Charge==Charge){//
+            double resPz=Math.abs(Pz-Pred_Pz)/Math.abs(Pred_Pz);
+            //just use pz for outbending resPx<min_resPx && resPy<min_resPy &&
+            if( resPz<min_resPz && Pred_Charge==Charge){ 
                 min_resPx=resPx;
                 min_resPy=resPy;
                 min_resPz=resPz;
@@ -473,8 +516,8 @@ public class Level3Candidate {
             }
         }
         read_Particle_Bank(best_ind, PartBank);
-        if(min_resPx<lx && min_resPy<ly && min_resPz<lz && Vz<12 && Vz>-13 && Math.abs(chi2pid)<5){ //inbending
-        //if(min_resPx<lx && min_resPy<ly && min_resPz<lz && Vz<10 && Vz>-18 && Math.abs(chi2pid)<20){ //outbending
+        if(min_resPz<lz && Vz<12 && Vz>-13 && Math.abs(chi2pid)<5){ //inbending min_resPx<lx && min_resPy<ly && 
+        //if(min_resPz<lz && Vz<10 && Vz>-18 && Math.abs(chi2pid)<20){ //outbending
             PIndex=best_ind;
             unmatched=false;
         } else{
@@ -482,6 +525,12 @@ public class Level3Candidate {
             PID=-1;
             unmatched=true;
         }
+
+        /*PIndex=best_ind;
+        if(min_resPx<lx && min_resPy<ly && min_resPz<lz){ //inbending
+          //if(min_resPx<lx && min_resPy<ly && min_resPz<lz && Vz<10 && Vz>-18 && Math.abs(chi2pid)<20){ //outbending
+          unmatched=false;
+        }*/
         
     }
 
@@ -616,8 +665,75 @@ public class Level3Candidate {
         return csvLineBuilder.toString();
     }
 
-    //35 floating-point values and 6 integer values...
-    public String get_csv_out_fromCFPred_noTrack(){
+     //35 floating-point values and 6 integer values...
+     public String get_csv_out_fromCFPred_wSF(){
+      StringBuilder csvLineBuilder = new StringBuilder();
+
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCAL_energy_fcf/150000.0, ECIN_energy_fcf/150000.0, ECOUT_energy_fcf/150000.0));// /3
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALLU_fcf/500.0, PCALLV_fcf/500.0, PCALLW_fcf/500.0)); // /2000
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINLU_fcf/500.0, ECINLV_fcf/500.0, ECINLW_fcf/500.0));
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTLU_fcf/500.0, ECOUTLV_fcf/500.0, ECOUTLW_fcf/500.0));
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALDU_fcf/7.0, PCALDV_fcf/7.0, PCALDW_fcf/7.0)); //loop over at most 7 strips
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINDU_fcf/7.0, ECINDV_fcf/7.0, ECINDW_fcf/7.0)); //3 each side of pred
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTDU_fcf/7.0, ECOUTDV_fcf/7.0, ECOUTDW_fcf/7.0));
+
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCAL_energy_fcf/(150000.0*Pred_P), ECIN_energy_fcf/(150000.0*Pred_P), ECOUT_energy_fcf/(150000.0*Pred_P)));// /3
+      
+      for (float value : track_clusters) {
+          csvLineBuilder.append(String.format("%.6f,", value));
+      }
+      
+      for (double value : HTCC_adcs) {
+          csvLineBuilder.append(String.format("%.6f,",value/35000));
+      }
+      
+      for (int value : pid_label) {
+          csvLineBuilder.append(String.format("%d,", value));
+      }
+
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", P, Theta*(180.0 / Math.PI), Phi*(180.0 / Math.PI)));
+
+      // Remove the trailing comma
+      csvLineBuilder.deleteCharAt(csvLineBuilder.length() - 1);
+      // Convert StringBuilder to String
+      return csvLineBuilder.toString();
+  }
+
+ 
+  public String get_csv_out_fromCFPred_wHTCCPred_wSF(){
+    StringBuilder csvLineBuilder = new StringBuilder();
+
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCAL_energy_fcf/150000.0, ECIN_energy_fcf/150000.0, ECOUT_energy_fcf/150000.0));// /3
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALLU_fcf/500.0, PCALLV_fcf/500.0, PCALLW_fcf/500.0)); // /2000
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINLU_fcf/500.0, ECINLV_fcf/500.0, ECINLW_fcf/500.0));
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTLU_fcf/500.0, ECOUTLV_fcf/500.0, ECOUTLW_fcf/500.0));
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALDU_fcf/7.0, PCALDV_fcf/7.0, PCALDW_fcf/7.0)); //loop over at most 7 strips
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINDU_fcf/7.0, ECINDV_fcf/7.0, ECINDW_fcf/7.0)); //3 each side of pred
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTDU_fcf/7.0, ECOUTDV_fcf/7.0, ECOUTDW_fcf/7.0));
+
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCAL_energy_fcf/(150000.0*Pred_P), ECIN_energy_fcf/(150000.0*Pred_P), ECOUT_energy_fcf/(150000.0*Pred_P)));// /3
+    
+    for (float value : track_clusters) {
+        csvLineBuilder.append(String.format("%.6f,", value));
+    }
+    
+    csvLineBuilder.append(String.format("%.6f,",Pred_Nphe/50));
+    
+    
+    for (int value : pid_label) {
+        csvLineBuilder.append(String.format("%d,", value));
+    }
+
+    csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", P, Theta*(180.0 / Math.PI), Phi*(180.0 / Math.PI)));
+
+    // Remove the trailing comma
+    csvLineBuilder.deleteCharAt(csvLineBuilder.length() - 1);
+    // Convert StringBuilder to String
+    return csvLineBuilder.toString();
+}
+
+   
+  public String get_csv_out_fromCFPred_noTrack(){
       StringBuilder csvLineBuilder = new StringBuilder();
 
       csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCAL_energy_fcf/150000.0, ECIN_energy_fcf/150000.0, ECOUT_energy_fcf/150000.0));// /3
@@ -630,7 +746,7 @@ public class Level3Candidate {
       
       for (double value : HTCC_adcs) {
         csvLineBuilder.append(String.format("%.6f,",value/35000));
-    }
+      }
 
       //add Momentum theta phi for pred
       csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", Pred_P/10, Pred_Theta, (Pred_Phi+3.5)/7.0));
@@ -647,7 +763,7 @@ public class Level3Candidate {
       return csvLineBuilder.toString();
   }
 
-    //35 floating-point values and 6 integer values...
+    //35 floating-point values
     public float[] get_vars_forpid(){
         float[] vars_for_pid = new float[35];
         vars_for_pid[0]=PCAL_energy_fcf/150000;
@@ -685,6 +801,87 @@ public class Level3Candidate {
         
         return vars_for_pid;
     }
+
+    //38 floating-point values 
+    public float[] get_vars_forpid_wSF(){
+      float[] vars_for_pid = new float[38];
+      vars_for_pid[0]=PCAL_energy_fcf/150000;
+      vars_for_pid[1]=ECIN_energy_fcf/150000;
+      vars_for_pid[2]=ECOUT_energy_fcf/150000;
+      vars_for_pid[3]=PCALLU_fcf/500;
+      vars_for_pid[4]=PCALLV_fcf/500;
+      vars_for_pid[5]=PCALLW_fcf/500;
+      vars_for_pid[6]=ECINLU_fcf/500;
+      vars_for_pid[7]=ECINLV_fcf/500;
+      vars_for_pid[8]=ECINLW_fcf/500;
+      vars_for_pid[9]=ECOUTLU_fcf/500;
+      vars_for_pid[10]=ECOUTLV_fcf/500;
+      vars_for_pid[11]=ECOUTLW_fcf/500;
+      vars_for_pid[12]=PCALDU_fcf/16;
+      vars_for_pid[13]=PCALDV_fcf/16;
+      vars_for_pid[14]=PCALDW_fcf/16;
+      vars_for_pid[15]=ECINDU_fcf/16;
+      vars_for_pid[16]=ECINDV_fcf/16;
+      vars_for_pid[17]=ECINDW_fcf/16;
+      vars_for_pid[18]=ECOUTDU_fcf/16;
+      vars_for_pid[19]=ECOUTDV_fcf/16;
+      vars_for_pid[20]=ECOUTDW_fcf/16;
+      vars_for_pid[21]=PCAL_energy_fcf/(150000*Pred_P);
+      vars_for_pid[22]=ECIN_energy_fcf/(150000*Pred_P);
+      vars_for_pid[23]=ECOUT_energy_fcf/(150000*Pred_P);
+      
+      int n=24;
+      for (float value : track_clusters) {
+          vars_for_pid[n]=value;
+          n++;
+      }
+      
+      for (float value : HTCC_adcs) {
+          vars_for_pid[n]=value/35000;
+          n++;
+      }
+      
+      return vars_for_pid;
+  }
+
+  //38 floating-point values 
+  public float[] get_vars_forpid_wHTCCPred_wSF(){
+    float[] vars_for_pid = new float[31];
+    vars_for_pid[0]=PCAL_energy_fcf/150000;
+    vars_for_pid[1]=ECIN_energy_fcf/150000;
+    vars_for_pid[2]=ECOUT_energy_fcf/150000;
+    vars_for_pid[3]=PCALLU_fcf/500;
+    vars_for_pid[4]=PCALLV_fcf/500;
+    vars_for_pid[5]=PCALLW_fcf/500;
+    vars_for_pid[6]=ECINLU_fcf/500;
+    vars_for_pid[7]=ECINLV_fcf/500;
+    vars_for_pid[8]=ECINLW_fcf/500;
+    vars_for_pid[9]=ECOUTLU_fcf/500;
+    vars_for_pid[10]=ECOUTLV_fcf/500;
+    vars_for_pid[11]=ECOUTLW_fcf/500;
+    vars_for_pid[12]=PCALDU_fcf/16;
+    vars_for_pid[13]=PCALDV_fcf/16;
+    vars_for_pid[14]=PCALDW_fcf/16;
+    vars_for_pid[15]=ECINDU_fcf/16;
+    vars_for_pid[16]=ECINDV_fcf/16;
+    vars_for_pid[17]=ECINDW_fcf/16;
+    vars_for_pid[18]=ECOUTDU_fcf/16;
+    vars_for_pid[19]=ECOUTDV_fcf/16;
+    vars_for_pid[20]=ECOUTDW_fcf/16;
+    vars_for_pid[21]=PCAL_energy_fcf/(150000*Pred_P);
+    vars_for_pid[22]=ECIN_energy_fcf/(150000*Pred_P);
+    vars_for_pid[23]=ECOUT_energy_fcf/(150000*Pred_P);
+    
+    int n=24;
+    for (float value : track_clusters) {
+        vars_for_pid[n]=value;
+        n++;
+    }
+
+    vars_for_pid[30]=(float) Pred_Nphe/50;
+    
+    return vars_for_pid;
+}
 
     //35 floating-point values and 6 integer values...
     public float[] get_vars_forpid_noTrack(){
@@ -752,21 +949,73 @@ public class Level3Candidate {
         return csvLineBuilder.toString();
     }
 
-    public double getM(int pid){
-        switch(pid){
-            case 22: return 0;
-            case 11: return 0.000511;
-            case -11: return 0.000511;
-            case 211: return 0.13957;
-            case -211: return 0.13957;
-            case 13: return 0.10566;
-            case -13: return 0.10566;
-            case 321: return 0.49368;
-            case -321: return 0.49368;
-            case 2212: return 0.938272;
-            case 2112: return 0.939565;
-            default: return -1;
-        }
+    public String get_csv_htcc_out(){
+      StringBuilder csvLineBuilder = new StringBuilder();
+      // Append values from track_clusters array to the StringBuilder
+      for (float value : track_clusters) {
+          csvLineBuilder.append(String.format("%.6f,", value));
+      }
+
+      for (double value : HTCC_adcs_ms) {
+        csvLineBuilder.append(String.format("%.6f,",value/35000));
+      }
+
+      //next values is NPHE to predict
+      csvLineBuilder.append(String.format("%.6f,", Nphe/50));
+      //P THeta Phi to bin
+      csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", P, Theta*(180.0 / Math.PI), Phi*(180.0 / Math.PI)));
+      // Remove the trailing comma
+      csvLineBuilder.deleteCharAt(csvLineBuilder.length() - 1);
+      // Convert StringBuilder to String
+      return csvLineBuilder.toString();
+  }
+
+  //30 floating-point values
+  public float[] get_vars_forhtcc(){
+    float[] vars_for_htcc = new float[30];
+    
+    int n=0;
+
+    for (float value : track_clusters) {
+      vars_for_htcc[n]=value;
+      n++;
+  }
+    
+    for (float value : HTCC_adcs_ms) {
+        vars_for_htcc[n]=value/35000;
+        n++;
     }
+    
+    return vars_for_htcc;
+}
+
+public double getM(int pid) {
+  switch (pid) {
+    case 22:
+      return 0;
+    case 11:
+      return 0.000511;
+    case -11:
+      return 0.000511;
+    case 211:
+      return 0.13957;
+    case -211:
+      return 0.13957;
+    case 13:
+      return 0.10566;
+    case -13:
+      return 0.10566;
+    case 321:
+      return 0.49368;
+    case -321:
+      return 0.49368;
+    case 2212:
+      return 0.938272;
+    case 2112:
+      return 0.939565;
+    default:
+      return -1;
+  }
+}
 
 }

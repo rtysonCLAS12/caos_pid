@@ -30,26 +30,27 @@ void train_test_cf() {
   // String
   // trainDir="/Users/tyson/data_repo/trigger_data/sims/claspyth_train/for_pid/";
   String trainDir = "/Users/tyson/data_repo/trigger_data/rgd/018326/for_caos_pid/";
+  //String trainDir = "/Users/tyson/data_repo/trigger_data/rgd/018777/for_caos_pid/";
 
-  DataList dlt = DataList.fromCSV(trainDir + "train_cf_wFTOF_sector1Only.csv",
+  DataList dlt = DataList.fromCSV(trainDir + "train_cf_wFTOF.csv",
+      DataList.range(0, 6), DataList.range(6, 6 + nClass)); //_outbending
+  DataList dle = DataList.fromCSV(trainDir + "test_cf_wFTOF.csv",
       DataList.range(0, 6), DataList.range(6, 6 + nClass));
-  DataList dle = DataList.fromCSV(trainDir + "test_cf_wFTOF_sector1Only.csv",
-      DataList.range(0, 6), DataList.range(6, 6 + nClass));
-  DataList dlv = DataList.fromCSV(trainDir + "test_cf_wFTOF_sector1Only.csv",
+  DataList dlv = DataList.fromCSV(trainDir + "test_cf_wFTOF.csv",
       DataList.range(6 + nClass, 6 + nClass + 3), DataList.range(6, 6 + nClass));
   dlt.shuffle();
 
   dlt.scan();
 
-  /*DeepNettsNetwork regression = new DeepNettsNetwork();
+  DeepNettsNetwork regression = new DeepNettsNetwork();
   regression.activation(ActivationType.TANH); // or ActivationType.TANH
   regression.outputActivation(ActivationType.LINEAR);
   regression.init(new int[] { 6, 12, 36, 27, 18, nClass });
   regression.train(dlt, 1000);
 
-  regression.save("cf_el_wFTOF_sector1Only.network");*/
+  regression.save("cf_el_wFTOF.network"); //_outbending
 
-  EJMLModel model = new EJMLModel("cf_el_wFTOF_sector1Only.network", ModelType.TANH_LINEAR);
+  EJMLModel model = new EJMLModel("cf_el_wFTOF.network", ModelType.TANH_LINEAR); //_outbending
 
   System.out.println("network structure: " + model.summary());
   System.out.println("\n\nRunning Inference:\n------------");
@@ -60,18 +61,18 @@ void train_test_cf() {
 
     calcMSE(dle, model, det, nClass);
     //plotCFExamples(dle,model,det,1,nClass);
-    //plotConvertedLs(dle,det);
+    plotConvertedLs(dle,det);
 
-    //plotCFVarDep(dle,dlv,model,det,0,"P","[GeV]",1,9.0,1.0,nClass);
-    //plotCFVarDep(dle,dlv,model,det,1,"Theta","[Deg]",5.0,35.0,5.,nClass);
-    //plotCFVarDep(dle,dlv,model,det,2,"Phi","[Deg]",-180,180,10.,nClass);
+    plotCFVarDep(dle,dlv,model,det,0,"P","[GeV]",1,9.0,1.0,nClass);
+    plotCFVarDep(dle,dlv,model,det,1,"Theta","[Deg]",5.0,35.0,5.,nClass);
+    plotCFVarDep(dle,dlv,model,det,2,"Phi","[Deg]",-180,180,10.,nClass);
   }
 
   if (usingFTOF) {
     plotFTOF(dle, model, nClass);
-    //plotFTOFVarDep(dle,dlv,model,0,"P","[GeV]",1,9.0,1.0,nClass);
-    //plotFTOFVarDep(dle,dlv,model,1,"Theta","[Deg]",5.0,35.0,5.,nClass);
-    //plotFTOFVarDep(dle,dlv,model,2,"Phi","[Deg]",-180,180,10.,nClass);
+    plotFTOFVarDep(dle,dlv,model,0,"P","[GeV]",1,9.0,1.0,nClass);
+    plotFTOFVarDep(dle,dlv,model,1,"Theta","[Deg]",5.0,35.0,5.,nClass);
+    plotFTOFVarDep(dle,dlv,model,2,"Phi","[Deg]",-180,180,10.,nClass);
   }
 
 }

@@ -37,7 +37,6 @@ import j4ml.data.*;
 import j4ml.deepnetts.*;
 import j4ml.ejml.EJMLModel;
 import j4ml.ejml.EJMLModel.ModelType;
-import j4np.neural.classifier.NeuralClassifierModel;
 
 /**
  *
@@ -50,7 +49,7 @@ public class Level3Processor {
   }
 
   public static void main(String[] args) {
-    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/recook_caos_pid/run_018326_1_wAIBanks.h5";
+    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/run_18326_1_wAIBanks.h5";
 
     DataStream<HipoReader, HipoWriter, Event> str = new DataStream<HipoReader, HipoWriter, Event>();
     str.show();
@@ -59,7 +58,7 @@ public class Level3Processor {
     HipoReader source = new HipoReader();
     HipoWriter sync = new HipoWriter();
 
-    sync.open("output_test.h5");
+    sync.open("output_1.h5");
 
     source.open(file);
 
@@ -160,11 +159,11 @@ public class Level3Processor {
         e.write(bcf_out); //32100,11
         counter.set(counter.intValue()+1);
 
-        try {
+        /*try {
           Thread.sleep(25);
         } catch (InterruptedException ex) {
           Logger.getLogger(DataStream.class.getName()).log(Level.SEVERE, null, ex);
-        }
+        }*/
 
       }
 

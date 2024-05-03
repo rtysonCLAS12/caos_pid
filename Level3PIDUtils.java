@@ -37,7 +37,6 @@ import j4ml.data.*;
 import j4ml.deepnetts.*;
 import j4ml.ejml.EJMLModel;
 import j4ml.ejml.EJMLModel.ModelType;
-import j4np.neural.classifier.NeuralClassifierModel;
 
 /**
  *
@@ -72,8 +71,8 @@ public class Level3PIDUtils {
     }
   }
 
-  // using ECAL::adc
-  public void get_varsPID(float[] cf_pred, int[] cf_strips, float[] track_clusters, float[] vars_for_pid, Bank ECAL_Bank, Bank HTCC_Bank, int sector) {
+  
+  public float get_varsPID(float[] cf_pred, int[] cf_strips, float[] track_clusters, float[] vars_for_pid, Bank ECAL_Bank, Bank HTCC_Bank, int sector) {
     
     //Need to initialise some values to 0 as we add to these
     vars_for_pid[0] = 0; //PCAL Energy
@@ -107,7 +106,7 @@ public class Level3PIDUtils {
 
     readECALBank(vars_for_pid,cf_strips,ECAL_Bank,sector);
     //last 8 values are HTCC adc
-    readHTCCBank(vars_for_pid,HTCC_Bank,sector);
+    float sumHTCCADC = readHTCCBank(vars_for_pid,HTCC_Bank,sector);
 
     /*n=0;
     for (float var : vars_for_pid){
@@ -115,10 +114,59 @@ public class Level3PIDUtils {
       n++;
     }
     System.out.println("\n");*/
+    return sumHTCCADC;
+    
+  }
+  
+  public void get_varsPID_wHTCCPred_wSF(float[] cf_pred, int[] cf_strips, float[] track_clusters, float[] vars_for_pid, Bank ECAL_Bank, float Pred_Nphe, float Pred_P, int sector) {
+    
+    //Need to initialise some values to 0 as we add to these
+    vars_for_pid[0] = 0; //PCAL Energy
+    vars_for_pid[1] = 0; //ECIN Energy
+    vars_for_pid[2] = 0; //ECOUT Energy
+    vars_for_pid[3] = Math.abs(cf_pred[0]) / 500;
+    vars_for_pid[4] = Math.abs(cf_pred[1]) / 500;
+    vars_for_pid[5] = Math.abs(cf_pred[2]) / 500;
+    vars_for_pid[6] = Math.abs(cf_pred[3]) / 500;
+    vars_for_pid[7] = Math.abs(cf_pred[4]) / 500;
+    vars_for_pid[8] = Math.abs(cf_pred[5]) / 500;
+    vars_for_pid[9] = Math.abs(cf_pred[6]) / 500;
+    vars_for_pid[10] = Math.abs(cf_pred[7]) / 500;
+    vars_for_pid[11] = Math.abs(cf_pred[8]) / 500;
+    vars_for_pid[12] = 0 ; //PCAL DU
+    vars_for_pid[13] = 0 ; //PCAL DV
+    vars_for_pid[14] = 0 ; //PCAL DW
+    vars_for_pid[15] = 0 ; //ECIN DU
+    vars_for_pid[16] = 0 ; //ECIN DV
+    vars_for_pid[17] = 0 ; //ECIN DW
+    vars_for_pid[18] = 0 ; //ECOUT DU
+    vars_for_pid[19] = 0 ; //ECOUT DV
+    vars_for_pid[20] = 0 ; //ECOUT DW
+    vars_for_pid[21] = 0 ; //ECOUT DU
+    vars_for_pid[22] = 0 ; //ECOUT DV
+    vars_for_pid[23] = 0 ; //ECOUT DW
+
+    int n=24;
+    //track clusters
+    for (float value : track_clusters) {
+      vars_for_pid[n] = value;
+      n++;
+    }
+
+    readECALBank(vars_for_pid,cf_strips,ECAL_Bank,sector);
+    
+    vars_for_pid[21]=vars_for_pid[0]/Pred_P;
+    vars_for_pid[22]=vars_for_pid[1]/Pred_P;
+    vars_for_pid[23]=vars_for_pid[2]/Pred_P;
+
+
+    if(Pred_Nphe<0){Pred_Nphe=0;}
+    vars_for_pid[30]=Pred_Nphe;
     
   }
 
-  public void readHTCCBank(float[] vars_for_pid,Bank HTCC_Bank,int sector){
+  public float readHTCCBank(float[] vars_for_pid,Bank HTCC_Bank,int sector){
+    float sumHTCCADC=0;
     for(int k = 0; k < HTCC_Bank.getRows(); k++){
       int   sect = HTCC_Bank.getInt("sector", k);
       int  layer = HTCC_Bank.getInt("layer", k); //1 or 2
@@ -131,9 +179,52 @@ public class Level3PIDUtils {
           int index = ((layer - 1) * 4 + component) - 1;
           if(index>=0 && index<8){
             vars_for_pid[27+index]=ADC/35000;
+            sumHTCCADC+=ADC/35000;
           }   
       }
     }
+    return sumHTCCADC;
+  }
+
+  public void readHTCCBank_forNphePred(float[] track_clusters,float[] forHTCC_pred,Bank HTCC_Bank,int sector){
+
+    int n=0;
+    //track clusters
+    for (float value : track_clusters) {
+      forHTCC_pred[n] = value;
+      n++;
+    }
+
+    float sumHTCCADC=0;
+    for(int k = 0; k < HTCC_Bank.getRows(); k++){
+      int   sect = HTCC_Bank.getInt("sector", k);
+      int  layer = HTCC_Bank.getInt("layer", k); //1 or 2
+      int  component = HTCC_Bank.getInt("component", k); //1-4
+      float    ADC = HTCC_Bank.getInt("ADC", k);
+
+      int sector_m1=sector-1;
+      int sector_p1=sector+1;
+      if(sector==1){sector_m1=6;}
+      if(sector==6){sector_p1=1;}
+      int index = ((layer - 1) * 4 + component) - 1;
+
+      if (ADC >= 0.0) {
+        if (sect == sector) {
+          if (index >= 0 && index < 8) {
+            forHTCC_pred[n+index+8] = ADC / 35000;
+          }
+        } else if (sect == sector_m1) {
+          if (index >= 0 && index < 8) {
+            forHTCC_pred[n+index] = ADC / 35000;
+          }
+        } else if (sect == sector_p1) {
+          if (index >= 0 && index < 8) {
+            forHTCC_pred[n+index+16] = ADC / 35000;
+          }
+        }
+      }
+    }
+    
   }
 
   public void readECALBank(float[] vars_for_pid, int[] cf_strips,Bank ECAL_Bank,int sector){
@@ -199,7 +290,7 @@ public class Level3PIDUtils {
 
   }
 
-  public Boolean readTestBanks(int pindex,Bank bpart,Bank bcal, Bank bscint, Bank btrack,int[] cf_out, float[] pt_out,DataList LtoSConv){
+  public double readTestBanks(int pindex,Bank bpart,Bank bcal, Bank bscint, Bank btrack,int[] cf_out, float[] pt_out,DataList LtoSConv){
 
     for(int i=0;i<10;i++){
       cf_out[i]=0; //intialise as strip finder sometimes doesn't find strip
@@ -252,11 +343,34 @@ public class Level3PIDUtils {
     pt_out[10]=bpart.getFloat("vt", pindex);
     pt_out[11]=bpart.getInt("status", pindex);
 
-    Boolean goodTrack=false;
-    if(Track_nSL==6 && Track_chi2<350){
-      goodTrack=true;
+    return Track_chi2;
+
+  }
+
+  public void readTestBanksExtras(int pindex,Bank bpart,Bank bcal, Bank bscint, Bank btrack, Bank bhtcc, float[] extra_out){
+
+
+    for(int i=0; i<bcal.getRows();i++){
+      int pind=bcal.getInt("pindex",i);
+      int layer=bcal.getInt("layer",i);
+      if(pind==pindex){
+        int ind=0;
+        if(layer==4){
+          ind=1;
+        } else if(layer==7){
+          ind=2;
+        }
+        extra_out[ind]=bcal.getFloat("energy", i); 
+      }
     }
-    return goodTrack;
+
+    //bhtcc.show();
+    for(int i=0; i<bhtcc.getRows();i++){
+      int pind=bcal.getInt("pindex",i);
+      if(pind==pindex){
+        extra_out[3]=bhtcc.getFloat("nphe", i); 
+      }
+    }
 
   }
 
