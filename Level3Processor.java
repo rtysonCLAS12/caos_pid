@@ -109,10 +109,10 @@ public class Level3Processor {
           int outpid=211;
           if(Charge==-1){
             float[] vars_pid = new float[35];
-            utils.get_varsPID(cf_pred, cf_strips, track_clusters,vars_pid, bECAL, bHTCC, Sector);
+            float sumHTCCADC = utils.get_varsPID(cf_pred, cf_strips, track_clusters,vars_pid, bECAL, bHTCC, Sector);
             float[] pid_pred = new float[2];
             pider.getOutput(vars_pid, pid_pred);
-            if(pid_pred[0]>0.1){
+            if(pid_pred[0]>0.1 && cf_pred[9]>0 && sumHTCCADC>0  && vars_pid[0]>0 && !hasAllWrongECALPred(cf_strips)){
               outpid=11;
             } else{
               outpid=-211;
@@ -179,6 +179,26 @@ public class Level3Processor {
             DataList.range(0, 69), DataList.range(0, 1));
         pider = new EJMLModel("pid_elNegBG_fromcfpred.network", ModelType.SOFTMAX);
         return true;
+      }
+
+      //returns false when all predicted strips are -2
+      //eg the track goes out of acceptance of one layer of calorimeter
+      //this often indicates a bad track
+      public Boolean hasAllWrongECALPred(int[] arr) {
+    
+        if (arr[0] == -2 && arr[1]==-2 && arr[2]==-2) {
+          return true;
+        }
+    
+        if (arr[3] == -2 && arr[4]==-2 && arr[5]==-2) {
+          return true;
+        }
+    
+        if (arr[6] == -2 && arr[7]==-2 && arr[8]==-2) {
+          return true;
+        }
+        
+        return false;
       }
 
       public void show() {
