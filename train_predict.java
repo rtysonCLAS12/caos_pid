@@ -21,13 +21,15 @@ import twig.graphics.TGCanvas;
 void train_test(){
 
     int nClass=2;
-    //35 vars in file
-    int nVars=32; 
+    //35 vars in file, 38 with SF, 31 with SF and HTCC pred
+    int nVars=35; 
     //20 when remove tracks (6 nbs) 
-    int nTVars=32;
+    int nTVars=35;
+
 
     //String trainDir="/Users/tyson/data_repo/trigger_data/sims/claspyth_train/for_pid/";
     String trainDir="/Users/tyson/data_repo/trigger_data/rgd/018326/for_caos_pid/";
+    //String trainDir="/Users/tyson/data_repo/trigger_data/rgd/018777/for_caos_pid/";
 
     int[] var_inds=DataList.range(0,nVars);
     /*int var_inds[]=new int[nTVars];
@@ -40,11 +42,11 @@ void train_test(){
         }
     }*/
 
-    DataList dlt = DataList.fromCSV(trainDir+"train_fromcfpred_allNegBG_noTrack.csv",
+    DataList dlt = DataList.fromCSV(trainDir+"train_fromcfpred_allNegBG.csv",
             var_inds, DataList.range(nVars,nVars+nClass));
-    DataList dle = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG_noTrack.csv",
+    DataList dle = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG.csv",
             var_inds, DataList.range(nVars,nVars+nClass));
-    DataList dlv = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG_noTrack.csv",
+    DataList dlv = DataList.fromCSV(trainDir+"test_fromcfpred_allNegBG.csv",
             DataList.range(nVars+nClass,nVars+nClass+3), DataList.range(nVars,nVars+nClass));
     dlt.shuffle();
     
@@ -66,9 +68,9 @@ void train_test(){
     classifier.init(new int[] { nTVars,20,10,5, nClass });
     classifier.train(dlt, 1000);
 
-    classifier.save("pid_elNegBG_noTrack_fromcfpred.network");
+    classifier.save("pid_elNegBG_fromcfpred.network");//_outbending _wHTCCPred_wSF
 
-    EJMLModel model = new EJMLModel("pid_elNegBG_noTrack_fromcfpred.network", ModelType.SOFTMAX);
+    EJMLModel model = new EJMLModel("pid_elNegBG_fromcfpred.network", ModelType.SOFTMAX);//_outbending
 
     System.out.println("network structure: " + model.summary());
     System.out.println("\n\nRunning Inference:\n------------");

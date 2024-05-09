@@ -215,6 +215,8 @@ public class Level3Candidate {
         ECOUTLV_fcf=Math.abs(cf_pred[7]);
         ECOUTLW_fcf=Math.abs(cf_pred[8]);
 
+        int clsize=4;
+
         for(int k = 0; k < ECAL_Bank.getRows(); k++){
             
             int   sect = ECAL_Bank.getInt("sector", k);
@@ -227,47 +229,47 @@ public class Level3Candidate {
                 //----------------
                 if(sect==Sector){
                     if(layer==1){
-                        if(strip>(cf_strips[0]-4) && strip<(cf_strips[0]+4)){
+                        if(strip>(cf_strips[0]-clsize) && strip<(cf_strips[0]+clsize)){
                             PCALDU_fcf++;
                             PCAL_energy_fcf+=ADC;
                         }
                     } else if(layer==2){
-                        if(strip>(cf_strips[1]-4) && strip<(cf_strips[1]+4)){
+                        if(strip>(cf_strips[1]-clsize) && strip<(cf_strips[1]+clsize)){
                             PCALDV_fcf++;
                             PCAL_energy_fcf+=ADC;
                         }
                     } else if(layer==3){
-                        if(strip>(cf_strips[2]-4) && strip<(cf_strips[2]+4)){
+                        if(strip>(cf_strips[2]-clsize) && strip<(cf_strips[2]+clsize)){
                             PCALDW_fcf++;
                             PCAL_energy_fcf+=ADC;
                         }
                     } else if(layer==4){
-                        if(strip>(cf_strips[3]-4) && strip<(cf_strips[3]+4)){
+                        if(strip>(cf_strips[3]-clsize) && strip<(cf_strips[3]+clsize)){
                             ECINDU_fcf++;
                             ECIN_energy_fcf+=ADC;
                         }
                     } else if(layer==5){
-                        if(strip>(cf_strips[4]-4) && strip<(cf_strips[4]+4)){
+                        if(strip>(cf_strips[4]-clsize) && strip<(cf_strips[4]+clsize)){
                             ECINDV_fcf++;
                             ECIN_energy_fcf+=ADC;
                         }
                     } else if(layer==6){
-                        if(strip>(cf_strips[5]-4) && strip<(cf_strips[5]+4)){
+                        if(strip>(cf_strips[5]-clsize) && strip<(cf_strips[5]+clsize)){
                             ECINDW_fcf++;
                             ECIN_energy_fcf+=ADC;
                         }
                     } else if(layer==7){
-                        if(strip>(cf_strips[6]-4) && strip<(cf_strips[6]+4)){
+                        if(strip>(cf_strips[6]-clsize) && strip<(cf_strips[6]+clsize)){
                             ECOUTDU_fcf++;
                             ECOUT_energy_fcf+=ADC;
                         }
                     } else if(layer==8){
-                        if(strip>(cf_strips[7]-4) && strip<(cf_strips[7]+4)){
+                        if(strip>(cf_strips[7]-clsize) && strip<(cf_strips[7]+clsize)){
                             ECOUTDV_fcf++;
                             ECOUT_energy_fcf+=ADC;
                         }
                     } else if(layer==9){
-                        if(strip>(cf_strips[8]-4) && strip<(cf_strips[8]+4)){
+                        if(strip>(cf_strips[8]-clsize) && strip<(cf_strips[8]+clsize)){
                             ECOUTDW_fcf++;
                             ECOUT_energy_fcf+=ADC;
                         }
@@ -626,13 +628,15 @@ public class Level3Candidate {
     public String get_csv_out_fromCFPred(){
         StringBuilder csvLineBuilder = new StringBuilder();
 
+        double Depthdiv=16.0; //7.0 when using width of +/-3, 16 when using +/-6
+
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCAL_energy_fcf/150000.0, ECIN_energy_fcf/150000.0, ECOUT_energy_fcf/150000.0));// /3
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALLU_fcf/500.0, PCALLV_fcf/500.0, PCALLW_fcf/500.0)); // /2000
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINLU_fcf/500.0, ECINLV_fcf/500.0, ECINLW_fcf/500.0));
         csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTLU_fcf/500.0, ECOUTLV_fcf/500.0, ECOUTLW_fcf/500.0));
-        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALDU_fcf/7.0, PCALDV_fcf/7.0, PCALDW_fcf/7.0)); //loop over at most 7 strips
-        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINDU_fcf/7.0, ECINDV_fcf/7.0, ECINDW_fcf/7.0)); //3 each side of pred
-        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTDU_fcf/7.0, ECOUTDV_fcf/7.0, ECOUTDW_fcf/7.0));
+        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", PCALDU_fcf/Depthdiv, PCALDV_fcf/Depthdiv, PCALDW_fcf/Depthdiv)); //loop over at most 7 strips
+        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECINDU_fcf/Depthdiv, ECINDV_fcf/Depthdiv, ECINDW_fcf/Depthdiv)); //3 each side of pred
+        csvLineBuilder.append(String.format("%.6f,%.6f,%.6f,", ECOUTDU_fcf/Depthdiv, ECOUTDV_fcf/Depthdiv, ECOUTDW_fcf/Depthdiv));
         
         for (float value : track_clusters) {
             csvLineBuilder.append(String.format("%.6f,", value));
@@ -778,15 +782,15 @@ public class Level3Candidate {
         vars_for_pid[9]=ECOUTLU_fcf/500;
         vars_for_pid[10]=ECOUTLV_fcf/500;
         vars_for_pid[11]=ECOUTLW_fcf/500;
-        vars_for_pid[12]=PCALDU_fcf/16;
-        vars_for_pid[13]=PCALDV_fcf/16;
-        vars_for_pid[14]=PCALDW_fcf/16;
-        vars_for_pid[15]=ECINDU_fcf/16;
-        vars_for_pid[16]=ECINDV_fcf/16;
-        vars_for_pid[17]=ECINDW_fcf/16;
-        vars_for_pid[18]=ECOUTDU_fcf/16;
-        vars_for_pid[19]=ECOUTDV_fcf/16;
-        vars_for_pid[20]=ECOUTDW_fcf/16;
+        vars_for_pid[12]=PCALDU_fcf/7;
+        vars_for_pid[13]=PCALDV_fcf/7;
+        vars_for_pid[14]=PCALDW_fcf/7;
+        vars_for_pid[15]=ECINDU_fcf/7;
+        vars_for_pid[16]=ECINDV_fcf/7;
+        vars_for_pid[17]=ECINDW_fcf/7;
+        vars_for_pid[18]=ECOUTDU_fcf/7;
+        vars_for_pid[19]=ECOUTDV_fcf/7;
+        vars_for_pid[20]=ECOUTDW_fcf/7;
         
         int n=21;
         for (float value : track_clusters) {
@@ -817,15 +821,15 @@ public class Level3Candidate {
       vars_for_pid[9]=ECOUTLU_fcf/500;
       vars_for_pid[10]=ECOUTLV_fcf/500;
       vars_for_pid[11]=ECOUTLW_fcf/500;
-      vars_for_pid[12]=PCALDU_fcf/16;
-      vars_for_pid[13]=PCALDV_fcf/16;
-      vars_for_pid[14]=PCALDW_fcf/16;
-      vars_for_pid[15]=ECINDU_fcf/16;
-      vars_for_pid[16]=ECINDV_fcf/16;
-      vars_for_pid[17]=ECINDW_fcf/16;
-      vars_for_pid[18]=ECOUTDU_fcf/16;
-      vars_for_pid[19]=ECOUTDV_fcf/16;
-      vars_for_pid[20]=ECOUTDW_fcf/16;
+      vars_for_pid[12]=PCALDU_fcf/7;
+      vars_for_pid[13]=PCALDV_fcf/7;
+      vars_for_pid[14]=PCALDW_fcf/7;
+      vars_for_pid[15]=ECINDU_fcf/7;
+      vars_for_pid[16]=ECINDV_fcf/7;
+      vars_for_pid[17]=ECINDW_fcf/7;
+      vars_for_pid[18]=ECOUTDU_fcf/7;
+      vars_for_pid[19]=ECOUTDV_fcf/7;
+      vars_for_pid[20]=ECOUTDW_fcf/7;
       vars_for_pid[21]=PCAL_energy_fcf/(150000*Pred_P);
       vars_for_pid[22]=ECIN_energy_fcf/(150000*Pred_P);
       vars_for_pid[23]=ECOUT_energy_fcf/(150000*Pred_P);
@@ -859,15 +863,15 @@ public class Level3Candidate {
     vars_for_pid[9]=ECOUTLU_fcf/500;
     vars_for_pid[10]=ECOUTLV_fcf/500;
     vars_for_pid[11]=ECOUTLW_fcf/500;
-    vars_for_pid[12]=PCALDU_fcf/16;
-    vars_for_pid[13]=PCALDV_fcf/16;
-    vars_for_pid[14]=PCALDW_fcf/16;
-    vars_for_pid[15]=ECINDU_fcf/16;
-    vars_for_pid[16]=ECINDV_fcf/16;
-    vars_for_pid[17]=ECINDW_fcf/16;
-    vars_for_pid[18]=ECOUTDU_fcf/16;
-    vars_for_pid[19]=ECOUTDV_fcf/16;
-    vars_for_pid[20]=ECOUTDW_fcf/16;
+    vars_for_pid[12]=PCALDU_fcf/7;
+    vars_for_pid[13]=PCALDV_fcf/7;
+    vars_for_pid[14]=PCALDW_fcf/7;
+    vars_for_pid[15]=ECINDU_fcf/7;
+    vars_for_pid[16]=ECINDV_fcf/7;
+    vars_for_pid[17]=ECINDW_fcf/7;
+    vars_for_pid[18]=ECOUTDU_fcf/7;
+    vars_for_pid[19]=ECOUTDV_fcf/7;
+    vars_for_pid[20]=ECOUTDW_fcf/7;
     vars_for_pid[21]=PCAL_energy_fcf/(150000*Pred_P);
     vars_for_pid[22]=ECIN_energy_fcf/(150000*Pred_P);
     vars_for_pid[23]=ECOUT_energy_fcf/(150000*Pred_P);
@@ -898,15 +902,15 @@ public class Level3Candidate {
       vars_for_pid[9]=ECOUTLU_fcf/500;
       vars_for_pid[10]=ECOUTLV_fcf/500;
       vars_for_pid[11]=ECOUTLW_fcf/500;
-      vars_for_pid[12]=PCALDU_fcf/16;
-      vars_for_pid[13]=PCALDV_fcf/16;
-      vars_for_pid[14]=PCALDW_fcf/16;
-      vars_for_pid[15]=ECINDU_fcf/16;
-      vars_for_pid[16]=ECINDV_fcf/16;
-      vars_for_pid[17]=ECINDW_fcf/16;
-      vars_for_pid[18]=ECOUTDU_fcf/16;
-      vars_for_pid[19]=ECOUTDV_fcf/16;
-      vars_for_pid[20]=ECOUTDW_fcf/16;
+      vars_for_pid[12]=PCALDU_fcf/7;
+      vars_for_pid[13]=PCALDV_fcf/7;
+      vars_for_pid[14]=PCALDW_fcf/7;
+      vars_for_pid[15]=ECINDU_fcf/7;
+      vars_for_pid[16]=ECINDV_fcf/7;
+      vars_for_pid[17]=ECINDW_fcf/7;
+      vars_for_pid[18]=ECOUTDU_fcf/7;
+      vars_for_pid[19]=ECOUTDV_fcf/7;
+      vars_for_pid[20]=ECOUTDW_fcf/7;
       
       int n=21;
       

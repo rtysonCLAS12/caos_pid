@@ -1,4 +1,4 @@
-HipoReader r = new HipoReader("output_noRecEl_InstaEl_inbending.h5"); //_noRecEl_InstaEl_
+HipoReader r = new HipoReader("output_test_inbending_large_newNetwork.h5"); //_noRecEl_InstaEl_
 
 System.out.println("read");
 

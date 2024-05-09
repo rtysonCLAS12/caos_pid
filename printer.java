@@ -208,19 +208,19 @@ public class printer {
 
   public static void main(String[] args) {
 
-    String field="outbending";
+    String field="inbending";
     Boolean useMatched=true;
-    Boolean toscreen=false;
+    Boolean toscreen=true;
     int nEvs=10000;
-    if(toscreen){nEvs=10;}
+    if(toscreen){nEvs=100;}
 
 
     String uM="_matchedToRECTrack";
     if(useMatched==false){uM="_notMatchedToRECTrack";}
 
-    String file="output_noRecEl_InstaEl_"+field+".h5";
-    String out="output_noRec_InstaEl_"+field+"_runList"+uM+".txt";
-    //String out="bla.txt";
+    String file="output_noRecEl_InstaEl_"+field+"_newNetwork.h5";
+    //String out="output_noRec_InstaEl_"+field+"_runList"+uM+".txt";
+    String out="bla.txt";
 
     printer pter = new printer();
     pter.print(file,out,useMatched,toscreen,nEvs);

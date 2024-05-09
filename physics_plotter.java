@@ -1209,7 +1209,7 @@ public class physics_plotter {
 
   public static void main(String[] args) {
 
-    String file="output_test_inbending_large.h5";
+    String file="output_test_inbending_verylarge.h5";
 
     physics_plotter pter = new physics_plotter();
     //pter.plot_e2pi(file,10.547);
@@ -1222,10 +1222,10 @@ public class physics_plotter {
     //pter.plot_epipREC(file,10.547);
 
     //best to get estimate of purity of pid only
-    //pter.plot_e2piREC(file,10.547);
+    pter.plot_e2piREC(file,10.547);
 
     
-    pter.plot_2piREC(file,10.547);
+    //pter.plot_2piREC(file,10.547);
    //pter.plot_2KREC(file,10.547);
    //pter.plot_piREC(file,10.547);
 

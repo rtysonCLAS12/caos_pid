@@ -134,9 +134,9 @@ public class writer {
     CompositeNode pt = new CompositeNode(3210, 3, "i", 1200);
 
      // output
-     CompositeNode bcf_out = new CompositeNode(32100, 11, "sf9f", 24);
-     CompositeNode bcf_out_test = new CompositeNode(32100, 21, "sf9f", 24);
-     CompositeNode bcf_out_test_nAI = new CompositeNode(32100, 31, "sf9f", 24);
+     CompositeNode bcf_out = new CompositeNode(32100, 11, "sf9f9f", 48);
+     CompositeNode bcf_out_test = new CompositeNode(32100, 21, "sf9f9f", 48);
+     CompositeNode bcf_out_test_nAI = new CompositeNode(32100, 31, "sf9f9f", 48);
      CompositeNode pt_out = new CompositeNode(32100, 3, "sssifffffffsffffffffffffi", 1200);
      CompositeNode pt_out_test = new CompositeNode(32100, 22, "sssifffffffsfffffi", 1200);
      CompositeNode pt_out_test_nAI = new CompositeNode(32100, 32, "sssifffffffsfffffi", 1200);
@@ -150,7 +150,7 @@ public class writer {
       e.read(tr, 32100, 2);
       e.read(pt, 32100, 3);
 
-      int nInstaEl=0;
+      int nInstaEl=0, n=0;
       for (int i = 0; i < tr.getRows(); i++) {
 
         int Sector = tr.getInt(1, i);
@@ -207,6 +207,10 @@ public class writer {
         }
         // Predicted FTOF Position
         bcf_out.putFloat(10, i, cf_pred[9] * 62);
+        for (int j = 0; j < 9; j++) {
+          //System.out.printf("local pos %f\n",cf_pred[j]);
+          bcf_out.putFloat(j + 11, i, cf_pred[j]);
+        }
 
         pt_out.setRows(i + 1);
         pt_out.putShort(0, i, (short) i);
@@ -252,7 +256,7 @@ public class writer {
         if(Sector==1 && outpid==11){
           nInstaEl++;
         }
-
+        n++;
       }
 
       int nrows = 0, nRECel=0;
@@ -260,8 +264,9 @@ public class writer {
 
         int[] cf_out_test = new int[10];
         float[] apt_out_test = new float[12];
+        float[] ls_test = new float[]{ -2, -2, -2, -2, -2, -2, -2, -2, -2 };
         double track_chi2 = utils.readTestBanks(i, banks[5], banks[6], banks[12], banks[8], cf_out_test,
-            apt_out_test, LtoSconv);
+            apt_out_test, LtoSconv,ls_test);
         float[] extra_out_test = new float[4];
         utils.readTestBanksExtras(i, banks[5], banks[6], banks[12], banks[8], banks[7], extra_out_test);
 
@@ -275,6 +280,10 @@ public class writer {
           }
           // Predicted FTOF Position
           bcf_out_test.putFloat(10,nrows, cf_out_test[9]);
+          for (int j = 0; j < 9; j++) {
+            //System.out.printf("local pos %f\n",ls_test[j]);
+            bcf_out_test.putFloat(j + 11,nrows, ls_test[j]);
+          }
 
           pt_out_test.setRows(nrows + 1);
           for (int j = 0; j < 3; j++) {
@@ -306,8 +315,9 @@ public class writer {
 
         int[] cf_out_test = new int[10];
         float[] apt_out_test = new float[12];
+        float[] ls_test = new float[]{ -2, -2, -2, -2, -2, -2, -2, -2, -2 };
         double track_chi2 = utils.readTestBanks(i, banks_nAI[5], banks_nAI[6], banks_nAI[12], banks_nAI[8], cf_out_test,
-            apt_out_test, LtoSconv);
+            apt_out_test, LtoSconv,ls_test);
         float[] extra_out_test = new float[4];
         utils.readTestBanksExtras(i, banks_nAI[5], banks_nAI[6], banks_nAI[12], banks_nAI[8], banks_nAI[7], extra_out_test);
 
@@ -322,6 +332,9 @@ public class writer {
           }
           // Predicted FTOF Position
           bcf_out_test_nAI.putFloat(10,nrows_nAI, cf_out_test[9]);
+          for (int j = 0; j < 9; j++) {
+            bcf_out_test_nAI.putFloat(j + 11,nrows_nAI, ls_test[j]);
+          }
 
           pt_out_test_nAI.setRows(nrows_nAI + 1);
           for (int j = 0; j < 3; j++) {
@@ -348,36 +361,37 @@ public class writer {
         }
       }
 
-          
+      int nAll=n+nrows+nrows_nAI;
+      if(nAll!=0){
+        // if(nRECel==0 && nInstaEl>0){
 
-      //if(nRECel==0 && nInstaEl>0){
+        // pt_out.show();
+        // pt_out_test.show();
 
-        //pt_out.show();
-        //pt_out_test.show();
-  
         e_out.reset();
         e_out.write(pt_out);
         e_out.write(tr);
-  
+
         e_out.write(bcf_out); // 32100,11
-  
+
         e_out.write(bcf_out_test);
         e_out.write(pt_out_test);
 
         e_out.write(bcf_out_test_nAI);
         e_out.write(pt_out_test_nAI);
 
-        for(Bank b:banks){
-          e_out.write(b); 
+        for (Bank b : banks) {
+          e_out.write(b);
         }
 
         w.addEvent(e_out);
 
-        //use -1 to say we want to read all the input file
-        if(nEvs!=-1){
+        // use -1 to say we want to read all the input file
+        if (nEvs != -1) {
           nFound++;
         }
-      //}
+        // }
+      }
 
     }
 
@@ -407,13 +421,13 @@ public class writer {
     writer Writer = new writer();
     Writer.load_cf("cf_el_wFTOF"+field+".network");
     Writer.load_LtoStripConv("LtoStrip_convTable.csv");
-    Writer.load_pider("old_networks/pid_elNegBG_fromcfpred"+field+".network");// _fromcfpred old_networks/ _wSF _wHTCCPred_wSF old_networks/
+    Writer.load_pider("pid_elNegBG_fromcfpred"+field+".network");// _fromcfpred old_networks/ _wSF _wHTCCPred_wSF old_networks/ old_networks/
     //Writer.load_htccer("htccer_allNeg"+field+".network");
 
     if(!outbend){field="_inbending";}
 
-    Writer.writeOut(file,"output_test"+field+"_large.h5", -1,outbend); //noRecEl_InstaEl _newNetwork
-    //Writer.writeOut(file,"output_noRecEl_InstaEl"+field+".h5", 100000,outbend); //
+    Writer.writeOut(file,"output_test"+field+"_large_newNetwork.h5", -1,outbend); //noRecEl_InstaEl _newNetwork _newNetwork
+    //Writer.writeOut(file,"output_noRecEl_InstaEl"+field+".h5", 100000,outbend); //_newNetwork
 
 
     

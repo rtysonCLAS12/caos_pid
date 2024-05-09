@@ -229,58 +229,62 @@ public class Level3PIDUtils {
 
   public void readECALBank(float[] vars_for_pid, int[] cf_strips,Bank ECAL_Bank,int sector){
 
+    int clSize=4;// 4 6
+    double cldepth=7.0;//7.0; 16
+
     //read cal bank
     for (int k = 0; k < ECAL_Bank.getRows(); k++) {
       int sect = ECAL_Bank.getInt("sector", k);
       int layer = ECAL_Bank.getInt("layer", k);
       int strip = ECAL_Bank.getInt("component", k);
       float ADC = ECAL_Bank.getInt("ADC", k);
+
       if (ADC > 0.0) {
         // ----------------
         if (sect == sector) {
           if (layer == 1) {
-            if (strip > (cf_strips[0] - 4) && strip < (cf_strips[0] + 4)) {
-              vars_for_pid[12] += 1.0 / 16.0;
+            if (strip > (cf_strips[0] - clSize) && strip < (cf_strips[0] + clSize)) {
+              vars_for_pid[12] += 1.0 / cldepth;
               vars_for_pid[0] += ADC / 150000.0;
             }
           } else if (layer == 2) {
-            if (strip > (cf_strips[1] - 4) && strip < (cf_strips[1] + 4)) {
-              vars_for_pid[13] += 1.0 / 16.0;
+            if (strip > (cf_strips[1] - clSize) && strip < (cf_strips[1] + clSize)) {
+              vars_for_pid[13] += 1.0 / cldepth;
               vars_for_pid[0] += ADC / 150000.0;
             }
           } else if (layer == 3) {
-            if (strip > (cf_strips[2] - 4) && strip < (cf_strips[2] + 4)) {
-              vars_for_pid[14] += 1.0 / 16.0;
+            if (strip > (cf_strips[2] - clSize) && strip < (cf_strips[2] + clSize)) {
+              vars_for_pid[14] += 1.0 / cldepth;
               vars_for_pid[0] += ADC / 150000.0;
             }
           } else if (layer == 4) {
-            if (strip > (cf_strips[3] - 4) && strip < (cf_strips[3] + 4)) {
-              vars_for_pid[15] += 1.0 / 16.0;
+            if (strip > (cf_strips[3] - clSize) && strip < (cf_strips[3] + clSize)) {
+              vars_for_pid[15] += 1.0 / cldepth;
               vars_for_pid[1] += ADC / 150000.0;
             }
           } else if (layer == 5) {
-            if (strip > (cf_strips[4] - 4) && strip < (cf_strips[4] + 4)) {
-              vars_for_pid[16] += 1.0 / 16.0;
+            if (strip > (cf_strips[4] - clSize) && strip < (cf_strips[4] + clSize)) {
+              vars_for_pid[16] += 1.0 / cldepth;
               vars_for_pid[1] += ADC / 150000.0;
             }
           } else if (layer == 6) {
-            if (strip > (cf_strips[5] - 4) && strip < (cf_strips[5] + 4)) {
-              vars_for_pid[17] += 1.0 / 16.0;
+            if (strip > (cf_strips[5] - clSize) && strip < (cf_strips[5] + clSize)) {
+              vars_for_pid[17] += 1.0 / cldepth;
               vars_for_pid[1] += ADC / 150000.0;
             }
           } else if (layer == 7) {
-            if (strip > (cf_strips[6] - 4) && strip < (cf_strips[6] + 4)) {
-              vars_for_pid[18] += 1.0 / 16.0;
+            if (strip > (cf_strips[6] - clSize) && strip < (cf_strips[6] + clSize)) {
+              vars_for_pid[18] += 1.0 / cldepth;
               vars_for_pid[2] += ADC / 150000;
             }
           } else if (layer == 8) {
-            if (strip > (cf_strips[7] - 4) && strip < (cf_strips[7] + 4)) {
-              vars_for_pid[19] += 1.0 / 16.0;
+            if (strip > (cf_strips[7] - clSize) && strip < (cf_strips[7] + clSize)) {
+              vars_for_pid[19] += 1.0 / cldepth;
               vars_for_pid[2] += ADC / 150000;
             }
           } else if (layer == 9) {
-            if (strip > (cf_strips[8] - 4) && strip < (cf_strips[8] + 4)) {
-              vars_for_pid[20] += 1.0 / 16.0;
+            if (strip > (cf_strips[8] - clSize) && strip < (cf_strips[8] + clSize)) {
+              vars_for_pid[20] += 1.0 / cldepth;
               vars_for_pid[2] += ADC / 150000;
             }
           }
@@ -290,7 +294,7 @@ public class Level3PIDUtils {
 
   }
 
-  public double readTestBanks(int pindex,Bank bpart,Bank bcal, Bank bscint, Bank btrack,int[] cf_out, float[] pt_out,DataList LtoSConv){
+  public double readTestBanks(int pindex,Bank bpart,Bank bcal, Bank bscint, Bank btrack,int[] cf_out, float[] pt_out,DataList LtoSConv, float[] ls){
 
     for(int i=0;i<10;i++){
       cf_out[i]=0; //intialise as strip finder sometimes doesn't find strip
@@ -318,7 +322,7 @@ public class Level3PIDUtils {
       }
     }
 
-    float[] ls = new float[9];
+    //float[] ls = new float[9];
     for(int i=0; i<bcal.getRows();i++){
       int pind=bcal.getInt("pindex",i);
       int layer=bcal.getInt("layer",i);

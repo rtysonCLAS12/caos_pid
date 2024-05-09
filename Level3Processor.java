@@ -49,7 +49,7 @@ public class Level3Processor {
   }
 
   public static void main(String[] args) {
-    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/run_18326_1_wAIBanks.h5";
+    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/run_18326_3_wAIBanks.h5";
 
     DataStream<HipoReader, HipoWriter, Event> str = new DataStream<HipoReader, HipoWriter, Event>();
     str.show();
@@ -148,12 +148,12 @@ public class Level3Processor {
 
         //Messing with outstream because e.remove prints LENGTH = somelength
         //this was annoying me
-        PrintStream original = System.out;
-        System.setOut(new PrintStream(OutputStream.nullOutputStream()));
+        //PrintStream original = System.out;
+        //System.setOut(new PrintStream(OutputStream.nullOutputStream()));
 
         e.remove(32100, 3);
 
-        System.setOut(original);
+        //System.setOut(original);
         e.write(pt_out);
 
         e.write(bcf_out); //32100,11

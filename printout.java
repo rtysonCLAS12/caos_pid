@@ -1,4 +1,4 @@
-HipoReader r = new HipoReader("/Users/tyson/data_repo/trigger_data/rgd/018777/run_18777_1_wAIBanks.h5"); //output_test.h5
+HipoReader r = new HipoReader("output_1.h5"); //output_test.h5
 
 
 CompositeNode tr = new CompositeNode(32100,2,"i",1200);
@@ -29,8 +29,8 @@ while(r.hasNext() && counter<100){
         //for(int k = 1; k < 10; k++) System.out.printf("%9.1f ",cf.getDouble(k,i));
         //System.out.printf("] FTOF Position %9.1f \n\n", cf.getDouble(10,i));
       }
-      recpart.show();
-      rectrack.show();
+      //recpart.show();
+      //rectrack.show();
     }
     
 
