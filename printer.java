@@ -105,6 +105,10 @@ public class printer {
       CompositeNode pt_test = new CompositeNode(32100,22,"i",1200);
       CompositeNode cf_test = new CompositeNode(32100,21,"i",1200);
 
+      Bank htccrec = r.getBank("HTCC::rec");
+      Bank htccadc = r.getBank("HTCC::adc");
+      Bank rectraj = r.getBank("RECAI::Traj");
+
       Event event = new Event();
       int counter = 0;
       while(r.hasNext() && counter<nEv){
@@ -114,6 +118,11 @@ public class printer {
         event.read(cf,32100,11);
         event.read(pt_test,32100,22);
         event.read(cf_test,32100,21);
+
+        event.read(htccrec);
+        event.read(htccadc);
+        event.read(rectraj);
+
         int nrows = tr.getRows();
         System.out.println("\n--- next event");
         
@@ -180,6 +189,12 @@ public class printer {
           if(pt_test.getInt(2,i)==1){
             if(shown_r==0 && printToScreen){
               System.out.printf("--- REC AI event %d\n\n",pt_test.getInt(17,0));
+              System.out.println("HTCC adc");
+              htccadc.show();
+              System.out.println("HTCC rec");
+              htccrec.show();
+              System.out.println("Traj rec");
+              rectraj.show();
             }
             if(isMatched!=-1){
               if(printToScreen){
@@ -198,6 +213,7 @@ public class printer {
                 shown_r++;
               }
             }
+            
           }
         }
       }
@@ -208,7 +224,8 @@ public class printer {
 
   public static void main(String[] args) {
 
-    String field="inbending";
+    //String field="inbending";
+    String field="outbending";
     Boolean useMatched=true;
     Boolean toscreen=true;
     int nEvs=10000;
@@ -218,7 +235,7 @@ public class printer {
     String uM="_matchedToRECTrack";
     if(useMatched==false){uM="_notMatchedToRECTrack";}
 
-    String file="output_noRecEl_InstaEl_"+field+"_newNetwork.h5";
+    String file="output_noRecEl_InstaEl_"+field+"_RfRecooked.h5";
     //String out="output_noRec_InstaEl_"+field+"_runList"+uM+".txt";
     String out="bla.txt";
 

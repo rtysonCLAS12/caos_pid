@@ -29,8 +29,10 @@ import twig.graphics.TGCanvas;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.io.IOException;
 import java.io.PrintWriter;
+
+import java.time.Duration;
+import java.time.Instant;
 
 import j4np.data.base.*;
 import j4ml.data.*;
@@ -49,10 +51,9 @@ public class Level3Processor {
   }
 
   public static void main(String[] args) {
-    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/run_18326_3_wAIBanks.h5";
+    String file = "/Users/tyson/data_repo/trigger_data/rgd/018326/run_18326_1_wAIBanks.h5";
 
     DataStream<HipoReader, HipoWriter, Event> str = new DataStream<HipoReader, HipoWriter, Event>();
-    str.show();
 
     DataFrame<Event> frame = new DataFrame<>();
     HipoReader source = new HipoReader();
@@ -224,9 +225,18 @@ public class Level3Processor {
       frame.addEvent(new Event());
     }
     str.threads(4);
-    str.withSource(source).withOutput(sync).withFrame(frame).consumer(worker).run();
 
+
+    //double timeElapsed=0;
+    //Instant start_time = Instant.now();
+
+    str.withSource(source).withOutput(sync).withFrame(frame).consumer(worker).run();
     str.show();
+
+    //Instant finish_time = Instant.now();
+    //timeElapsed += Duration.between(start_time, finish_time).getSeconds();//.toMillis();
+    //System.out.printf("Took %f s\n",timeElapsed);
+    
   }
 
 }

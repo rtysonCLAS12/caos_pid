@@ -122,12 +122,12 @@ public class writer {
     // r.getSchemaFactory().show();
     Bank[] banks_nAI = r.getBanks("DC::tdc", "ECAL::adc", "RUN::config", "FTOF::adc", "HTCC::adc",
         "REC::Particle", "REC::Calorimeter", "REC::Cherenkov", "REC::Track", "HitBasedTrkg::HBClusters",
-        "HitBasedTrkg::HBTracks", "ECAL::clusters","REC::Scintillator","RUN::config");
+        "HitBasedTrkg::HBTracks", "ECAL::clusters","REC::Scintillator","RUN::config","HTCC::rec","REC::Traj");
     
     
     Bank[] banks = r.getBanks("DC::tdc", "ECAL::adc", "RUN::config", "FTOF::adc", "HTCC::adc",
         "RECAI::Particle", "RECAI::Calorimeter", "RECAI::Cherenkov", "RECAI::Track", "HitBasedTrkg::HBClusters",
-        "HitBasedTrkg::HBTracks", "ECAL::clusters","RECAI::Scintillator","RUN::config");
+        "HitBasedTrkg::HBTracks", "ECAL::clusters","RECAI::Scintillator","RUN::config","HTCC::rec","RECAI::Traj");
     
 
     CompositeNode tr = new CompositeNode(3210, 2, "i", 1200);
@@ -192,7 +192,8 @@ public class writer {
         if (Charge == -1) {
           pider.getOutput(vars_pid, pid_pred);
           resp = pid_pred[0];
-          if (pid_pred[0] > 0.1 && cf_pred[9]>0 && sumHTCCADC>0 && !hasAllWrongECALPred(cf_strips) && vars_pid[0]>0) { //&& !IntarrayContains(cf_strips, -2) 
+          //&& cf_pred[9]>0 && sumHTCCADC>0 && !hasAllWrongECALPred(cf_strips) && vars_pid[0]>0
+          if (pid_pred[0] > 0.1 && cf_pred[9]>0 && sumHTCCADC>0 && !hasAllWrongECALPred(cf_strips) && vars_pid[0]>0) { 
             outpid = 11;
           } else {
             outpid = -211;
@@ -362,8 +363,7 @@ public class writer {
       }
 
       int nAll=n+nrows+nrows_nAI;
-      if(nAll!=0){
-        // if(nRECel==0 && nInstaEl>0){
+      if(nAll!=0 && nRECel==0 && nInstaEl>0){
 
         // pt_out.show();
         // pt_out_test.show();
@@ -390,7 +390,7 @@ public class writer {
         if (nEvs != -1) {
           nFound++;
         }
-        // }
+       
       }
 
     }
@@ -413,6 +413,7 @@ public class writer {
     Boolean outbend=false;
 
     //String file = "/Users/tyson/data_repo/trigger_data/rgd/018777/run_18777_1_wAIBanks.h5";
+    //String file = "/Users/tyson/data_repo/trigger_data/rgd/018777/sorted_out_skim_018777_noPID_wAIBanks.h5";
     //Boolean outbend=true;
 
     String field="";
@@ -421,13 +422,13 @@ public class writer {
     writer Writer = new writer();
     Writer.load_cf("cf_el_wFTOF"+field+".network");
     Writer.load_LtoStripConv("LtoStrip_convTable.csv");
-    Writer.load_pider("pid_elNegBG_fromcfpred"+field+".network");// _fromcfpred old_networks/ _wSF _wHTCCPred_wSF old_networks/ old_networks/
+    Writer.load_pider("old_networks/pid_elNegBG_fromcfpred"+field+".network");// _fromcfpred old_networks/ _wSF _wHTCCPred_wSF old_networks/ old_networks/
     //Writer.load_htccer("htccer_allNeg"+field+".network");
 
     if(!outbend){field="_inbending";}
 
-    Writer.writeOut(file,"output_test"+field+"_large_newNetwork.h5", -1,outbend); //noRecEl_InstaEl _newNetwork _newNetwork
-    //Writer.writeOut(file,"output_noRecEl_InstaEl"+field+".h5", 100000,outbend); //_newNetwork
+    Writer.writeOut(file,"output_test"+field+"_large_v2.h5", -1,outbend); //noRecEl_InstaEl _newNetwork _newNetwork
+    //Writer.writeOut(file,"output_noRecEl_InstaEl"+field+"_RfRecooked.h5", 100000,outbend); //_newNetwork
 
 
     

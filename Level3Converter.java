@@ -299,7 +299,13 @@ public class Level3Converter {
                   writer.println(p.get_csv_cf_out());
                   nEl++;
                 }
+              } else if (isPID == 4) {
+                if (!arrayContains(p.CF_out_onlyFTOF, 0)) {
+                  writer.println(p.get_csv_cf_out_onlyFTOF());
+                  nEl++;
+                }
               }
+
             }
             // any neg particle not an e- as BG
             else if (p.PID != 11 && p.Charge == -1 ) {
@@ -440,13 +446,16 @@ public class Level3Converter {
     conv.load_htccer("htccer_allNeg"+field+".network");
 
     // isPID 0 - training for pid, 1 - training for negative particle cf, 
-    //2 - training for pos part cf, 3 - training HTCC
+    //2 - training for pos part cf, 3 - training HTCC, 4 - only FTOF
 
-    conv.convertData(file,outDir+"train_fromcfpred_allNegBG.csv",0,100000,isOut);//50000 //_wHTCCPred_wSF
-    conv.convertData(filet,outDir+"test_fromcfpred_allNegBG.csv",0,50000,isOut);//50000 //_wHTCCPred_wSF
+    //conv.convertData(file,outDir+"train_fromcfpred_allNegBG.csv",0,100000,isOut);//50000 //_wHTCCPred_wSF
+    //conv.convertData(filet,outDir+"test_fromcfpred_allNegBG.csv",0,50000,isOut);//50000 //_wHTCCPred_wSF
 
     //conv.convertData(file, outDir + "train_cf_wFTOF.csv", 1, 100000,isOut);// 50000
     //conv.convertData(filet, outDir + "test_cf_wFTOF.csv", 1, 50000,isOut);// 50000
+
+    conv.convertData(file, outDir + "train_cf_onlyFTOF.csv", 4, 100000,isOut);// 50000
+    conv.convertData(filet, outDir + "test_cf_onlyFTOF.csv", 4, 50000,isOut);// 50000
 
     //conv.convertData(file,outDir+"train_allNeg_htcc.csv",3,100000,isOut);//50000
     //conv.convertData(filet,outDir+"test_allNeg_htcc.csv",3,10000,isOut);//50000

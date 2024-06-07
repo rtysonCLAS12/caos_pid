@@ -1,0 +1,6 @@
+*.network
+.vscode/
+*.h5
+*.yaml
+*.csv
+logs/

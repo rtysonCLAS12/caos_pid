@@ -27,6 +27,7 @@ public class Level3Candidate {
     double[] ecin_all_hits = new double[108];
     //double[] CF_out = new double[108];
     float[] CF_out = new float[]{0,0,0,0,0,0,0,0,0,0,0};
+    float[] CF_out_onlyFTOF = new float[]{0,0,0};
 
     //e-,pi+,pi-,e+,mu-,mu+
     int[] pid_label = new int[2]; //3
@@ -92,6 +93,7 @@ public class Level3Candidate {
 
     double FTOF_comp=0;
     double FTOF_path=0;
+    double FTOF_time=0;
 
     //below are values found in ECAL::adc bank
     //using cluster finder
@@ -362,6 +364,7 @@ public class Level3Candidate {
       for (int k = 0; k < Scint_Bank.getRows(); k++) {
           int pindex = Scint_Bank.getInt("pindex", k);
           double energy = Scint_Bank.getFloat("energy", k);
+          double time = Scint_Bank.getFloat("time", k);
           int sector = Scint_Bank.getInt("sector", k);
           int layer=Scint_Bank.getInt("layer",k);
           int component=Scint_Bank.getInt("component",k);
@@ -370,8 +373,12 @@ public class Level3Candidate {
               if(layer==2){
                 FTOF_comp=component;
                 FTOF_path=path;
+                FTOF_time=time;
                 CF_out[9]=component;
                 CF_out[10]=(float)path;
+                CF_out_onlyFTOF[0]=component;
+                CF_out_onlyFTOF[1]=(float)path;
+                CF_out_onlyFTOF[2]=(float)time;
               } 
           }
       }
@@ -952,6 +959,22 @@ public class Level3Candidate {
         // Convert StringBuilder to String
         return csvLineBuilder.toString();
     }
+
+    public String get_csv_cf_out_onlyFTOF(){
+      StringBuilder csvLineBuilder = new StringBuilder();
+      // Append values from track_clusters array to the StringBuilder
+      for (float value : track_clusters) {
+          csvLineBuilder.append(String.format("%.6f,", value));
+      }
+      //next two values are FTOF comp and path
+      csvLineBuilder.append(String.format("%.6f,", FTOF_comp/62));
+      csvLineBuilder.append(String.format("%.6f,", FTOF_path/1000));
+      csvLineBuilder.append(String.format("%.6f,", FTOF_time/500));
+      // Remove the trailing comma
+      csvLineBuilder.deleteCharAt(csvLineBuilder.length() - 1);
+      // Convert StringBuilder to String
+      return csvLineBuilder.toString();
+  }
 
     public String get_csv_htcc_out(){
       StringBuilder csvLineBuilder = new StringBuilder();

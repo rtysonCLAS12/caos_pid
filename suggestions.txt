@@ -1,0 +1,20 @@
+---- DataList ----
+
+Be able to select subset of variables from datalist, and remove subset of variables from datalist.
+This would useful to have eg P, theta, phi in datalist, split and shuffle it
+then remove p, theta, phi from training but have the data separately in right order to bin predictions in.
+
+Be able to stack datalists, like this i can read several files, get a datalist from them, then stack them together
+
+---- Training ----
+
+Be able to plot loss vs epoch
+
+Be able to add stopping criteria to training (eg if loss doesn't decrease by more than 10^-5)
+
+In regression training, have other variable than accuracy printed to terminal.
+MSE would make more sense.
+
+Be able to change loss function.
+
+Be able to output/plot test loss and accuracy during training to check for overfitting.
